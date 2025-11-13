@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>micro:bit ペンプロッター ツール（SVG/JSON/RAW5）</title>
+<style>
+  :root{--bg:#fafafa;--fg:#111;--muted:#666;--line:#e5e7eb;--accent:#0ea5e9}
+  html,body{height:100%}
+  body{margin:0;font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif;background:var(--bg);color:var(--fg)}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:16px}
+  header{max-width:1100px;margin:0 auto;padding:16px 16px 0}
+  h1{font-size:20px;margin:0 0 6px}
+  .muted{color:var(--muted)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .row > *{flex:0 0 auto}
+  button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 10px;cursor:pointer}
+  button.primary{background:var(--accent);color:#fff;border-color:transparent}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  input[type="range"]{width:160px}
+  textarea{width:100%;height:140px;resize:vertical}
+  .canvasBox{display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:16px;height:min(82vh,720px)}
+  canvas{
+    background:#fff;
+    border-radius:12px;
+    box-shadow:0 0 0 1px var(--line) inset;
+    touch-action:none;              /* ← iPhoneでパン/ズーム無効 */
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:10px;text-align:center}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .small{font-size:12px}
+</style>
+</head>
+<body>
+<!-- ▼ 下絵（背景）コントロール：中央貼り・濃さ調整 -->
+<div class="row" id="bgControls" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0;">
+  <input id="bgFile" type="file" accept="image/*" />
+  <button id="btnBgClear" type="button">下絵クリア</button>
+  <label style="display:inline-flex; align-items:center; gap:6px;">
+    下絵の濃さ
+    <input id="bgOpacity" type="range" min="0" max="1" step="0.05" value="0.35" />
+  </label>
+</div>
+
+  <header>
+    <h1>micro:bit ペンプロッター ツール</h1>
+    <div class="muted small">SVG/JSON/RAW5(0/1+YYXX) 読み込み → 0–180 フィット → 表示/お絵描き → RAW5/JSON 書き出し。スムージングと移動距離に応じた間引き対応。</div>
+  </header>
+
+  <div class="wrap">
+    <aside class="card" id="side">
+      <div class="row">
+        <input id="file" type="file" accept=".svg,.json,.txt,.hex,.dat" />
+        <button id="btnSaveJSON">JSON DL</button>
+        <button id="btnSaveRAW">RAW5 連結 DL</button>
+        <button id="btnSaveRAWLines">RAW5 20/行 DL</button>
+      </div>
+      <div id="drop" class="drop small" style="margin-top:8px">ここに SVG / JSON / RAW5 テキストをドラッグ＆ドロップ</div>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:12px 0" />
+
+      <div class="grid">
+        <div>
+          <div class="small muted">ツール</div>
+          <div class="row" style="margin-top:6px">
+            <button id="toolDraw">描く</button>
+            <button id="toolPan">パン</button>
+            <button id="btnClear">全消去</button>
+          </div>
+        </div>
+        <div>
+          <div class="small muted">ズーム</div>
+          <div class="row" style="margin-top:6px">
+            <input id="zoom" type="range" min="0.5" max="4" step="0.1" value="1" />
+            <span id="zoomLbl" class="small">1.0×</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="small" style="font-weight:600">スムージング / 間引き</div>
+        <div class="small muted">・スムージング: 移動平均（点の揺れを抑える）<br>・間引き: 累積移動距離が閾値を超えた時のみ点を残す（近すぎる点を削除）</div>
+        <div class="row" style="margin-top:6px">
+          <label class="small">スムージング窓</label>
+          <input id="smoothWin" type="range" min="0" max="10" step="1" value="2" />
+          <span id="smoothLbl" class="small">2</span>
+        </div>
+        <div class="row">
+          <label class="small">間引き距離</label>
+          <input id="minDist" type="range" min="0" max="10" step="0.5" value="1.5" />
+          <span id="minDistLbl" class="small">1.5</span>
+          <button id="btnApplySmooth" class="primary">適用</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="small" style="font-weight:600">RAW5 プレビュー（20個/行）</div>
+        <textarea id="rawPreview" readonly></textarea>
+      </div>
+    </aside>
+
+    <main class="card">
+      <div class="muted small">キャンバス（0–180 グリッド）。描画すると自動でRAW5/JSONが更新されます。</div>
+      <div class="canvasBox" style="margin-top:8px">
+        <div id="stage" style="position:relative; width:fit-content; margin:auto;">
+          <img id="bgImgEl" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0.35; pointer-events:none; z-index:2;">
+          <canvas id="cvs" width="520" height="520" style="position:relative; z-index:1;"></canvas>
+        </div>
+      </div>
+      <div class="small muted" style="margin-top:6px">* 複数パスは自動でペンアップ→移動→ペンダウンを挿入。サイズは0–180に等比フィット。</div>
+    </main>
+  </div>
+
+<script>
+/* ------------- ユーティリティなど（元のまま） ------------- */
+const LOGICAL_SIZE = 180; // 0..180
+const CANVAS_PX = 520;
+const PADDING = 0; // 論理余白
+
+function clamp180(n){n=Math.round(n);if(n<0)return 0;if(n>180)return 180;return n}
+function toHex4(n){let s=(n&0xffff).toString(16).toUpperCase();while(s.length<4)s="0"+s;return s}
+function packFrame(penUp,x,y){const pen=penUp?"1":"0";const v=((clamp180(y)&0xff)<<8)|(clamp180(x)&0xff);return pen+toHex4(v)}
+function unpackFrame(f){const penUp=f[0]==='1';const v=parseInt(f.slice(1),16)&0xffff;const y=(v>>8)&0xff;const x=v&0xff;return {penUp,x,y}}
+function framesToRAW5(frames,withSpaces=false,perLine=0){if(perLine>0){const lines=[];for(let i=0;i<frames.length;i+=perLine){const slice=frames.slice(i,i+perLine).join(withSpaces?" ":"");lines.push(slice)}return lines.join("\n")}return withSpaces?frames.join(" "):frames.join("")}
+function parseRAW5(raw){const cleaned=raw.replace(/[^0-9A-Fa-f\s]/g,"").replace(/\s+/g,"");const arr=[];for(let i=0;i+5<=cleaned.length;i+=5){arr.push(cleaned.slice(i,i+5).toUpperCase())}return arr}
+
+// -------------------- データ（ストローク & フレーム） --------------------
+let strokes = [];// Array<Array<{x,y}>>
+let frames = [];// Array<"0/1" + YYXX>
+
+function framesToStrokes(frs){
+  const s=[]; let cur=[];
+  for(const f of frs){
+    const {penUp,x,y}=unpackFrame(f);
+    if(penUp){
+      if(cur.length){ s.push(cur); cur=[]; }
+    } else {
+      cur.push({x,y});
+    }
+  }
+  if(cur.length) s.push(cur);
+  return s;
+}
+
+function strokesToFrames(sts){
+  const out=[];
+  for(const stroke of sts){
+    if(!stroke.length) continue;
+    const start=stroke[0];
+    out.push(packFrame(true,start.x,start.y));
+    for(const p of stroke){
+      out.push(packFrame(false,p.x,p.y));
+    }
+  }
+  return out;
+}
+
+function cleanFrames(frames) {
+  const out = [];
+  let i = 0;
+
+  while (i < frames.length) {
+    const f = frames[i];
+    const u = unpackFrame(f);
+    const xs = u.x;
+    const ys = u.y;
+
+    const run = [f];
+    let j = i + 1;
+    while (j < frames.length) {
+      const uj = unpackFrame(frames[j]);
+      if (uj.x === xs && uj.y === ys) {
+        run.push(frames[j]);
+        j++;
+      } else {
+        break;
+      }
+    }
+
+    const states = [];
+    for (const rf of run) {
+      const ur = unpackFrame(rf);
+      const s = ur.penUp ? 1 : 0;
+      if (states.length === 0 || states[states.length - 1] !== s) {
+        states.push(s);
+      }
+    }
+
+    if (states[0] === 0) {
+      out.push(packFrame(false, xs, ys));
+    } else {
+      if (states.length === 1) {
+        out.push(packFrame(true, xs, ys));
+      } else {
+        out.push(packFrame(true, xs, ys));
+        out.push(packFrame(false, xs, ys));
+      }
+    }
+    i = j;
+  }
+
+  return out;
+}
+
+function dedupeConsecutiveFrames(frames) {
+  const out = [];
+  let prev = null;
+  for (const f of frames) {
+    const u = unpackFrame(f);
+    if (
+      prev &&
+      prev.penUp === u.penUp &&
+      prev.x === u.x &&
+      prev.y === u.y
+    ) {
+      continue;
+    }
+    out.push(f);
+    prev = u;
+  }
+  return out;
+}
+
+function updateFramesAndPreview(){
+  frames = strokesToFrames(strokes)
+  document.getElementById('rawPreview').value = framesToRAW5(frames,true,20)
+  draw()
+}
+
+// -------------------- SVG 取り込み → ストローク --------------------
+function parseSVGText(svgText){
+  const parser=new DOMParser();const doc=parser.parseFromString(svgText,'image/svg+xml');
+  const svg=doc.querySelector('svg');if(!svg) return null;return svg
+}
+
+function samplePathElement(path,stepPx=2){
+  const len=path.getTotalLength();const pts=[]
+  for(let d=0;d<=len;d+=stepPx){const p=path.getPointAtLength(d);pts.push({x:p.x,y:p.y})}
+  if(!pts.length){const p=path.getPointAtLength(0);pts.push({x:p.x,y:p.y})}
+  return pts
+}
+
+function pointsFromSVG(svg,stepPx=2){
+  const strokes=[]
+  const vb=svg.viewBox.baseVal;const vbW=vb&&vb.width?vb.width:parseFloat(svg.getAttribute('width')||'180');
+  const vbH=vb&&vb.height?vb.height:parseFloat(svg.getAttribute('height')||'180');
+
+  svg.querySelectorAll('path').forEach(p=>{strokes.push(samplePathElement(p,stepPx))})
+
+  svg.querySelectorAll('polyline').forEach(pl=>{
+    const ptsAttr=pl.getAttribute('points')||'';
+    const pts=ptsAttr.trim().split(/\s+/).map(pr=>pr.split(',').map(Number)).filter(a=>a.length===2).map(([x,y])=>({x,y}))
+    if(pts.length) strokes.push(pts)
+  })
+
+  svg.querySelectorAll('line').forEach(ln=>{
+    const x1=parseFloat(ln.getAttribute('x1')||'0'),y1=parseFloat(ln.getAttribute('y1')||'0');
+    const x2=parseFloat(ln.getAttribute('x2')||'0'),y2=parseFloat(ln.getAttribute('y2')||'0');
+    strokes.push([{x:x1,y:y1},{x:x+w,y:y+h}])
+  })
+
+  svg.querySelectorAll('rect').forEach(r=>{
+    const x=parseFloat(r.getAttribute('x')||'0'),y=parseFloat(r.getAttribute('y')||'0');
+    const w=parseFloat(r.getAttribute('width')||'0'),h=parseFloat(r.getAttribute('height')||'0');
+    strokes.push([{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h},{x,y}])
+  })
+
+  svg.querySelectorAll('circle,ellipse').forEach(c=>{
+    const cx=parseFloat(c.getAttribute('cx')||'0'),cy=parseFloat(c.getAttribute('cy')||'0');
+    const rx=parseFloat(c.getAttribute('r')||c.getAttribute('rx')||'0');
+    const ry=parseFloat(c.getAttribute('ry')||c.getAttribute('r')||'0');
+    const seg=180;const pts=[];for(let i=0;i<=seg;i++){const a=i/seg*2*Math.PI;pts.push({x:cx+rx*Math.cos(a),y:cy+ry*Math.sin(a)})}
+    strokes.push(pts)
+  })
+
+  return fitAndQuantize(strokes)
+}
+
+// 0–180に等比フィットして丸め
+function fitAndQuantize(sts){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity
+  sts.forEach(s=>s.forEach(p=>{if(p.x<minX)minX=p.x;if(p.y<minY)minY=p.y;if(p.x>maxX)maxX=p.x;if(p.y>maxY)maxY=p.y}))
+  if(!isFinite(minX)||!isFinite(maxX)) return []
+  const w=maxX-minX,h=maxY-minY
+  const scale = w>h ? (LOGICAL_SIZE-PADDING*2)/w : (LOGICAL_SIZE-PADDING*2)/h
+  const offX=(LOGICAL_SIZE-w*scale)/2, offY=(LOGICAL_SIZE-h*scale)/2
+  return sts.map(s=>s.map(p=>({x:clamp180(offX+(p.x-minX)*scale),y:clamp180(offY+(p.y-minY)*scale)})))
+}
+
+// -------------------- スムージング / 間引き --------------------
+
+// 端点を固定してなめらかにする移動平均
+function movingAverageKeepEnds(stroke, win){
+  if (win <= 0 || stroke.length <= 2) return stroke.slice();
+  const out = [];
+  const n = stroke.length;
+  const w = win | 0;
+
+  out.push({ x: stroke[0].x, y: stroke[0].y });
+
+  for (let i = 1; i < n - 1; i++) {
+    let sx = 0, sy = 0, cnt = 0;
+    for (let k = -w; k <= w; k++) {
+      const j = i + k;
+      if (j < 0 || j >= n) continue;
+      sx += stroke[j].x;
+      sy += stroke[j].y;
+      cnt++;
+    }
+    out.push({ x: clamp180(sx / cnt), y: clamp180(sy / cnt) });
+  }
+
+  out.push({ x: stroke[n - 1].x, y: stroke[n - 1].y });
+  return out;
+}
+
+// 一定距離以上進んだ点だけ残す（端点は必ず残す）
+function simplifyByMinDistance(stroke, minDist){
+  if (minDist <= 0 || stroke.length <= 2) return stroke.slice();
+  const out = [];
+  let last = stroke[0];
+  out.push(last);
+  let acc = 0;
+  for (let i = 1; i < stroke.length; i++) {
+    const p = stroke[i];
+    const dx = p.x - last.x;
+    const dy = p.y - last.y;
+    const d = Math.hypot(dx, dy);
+    acc += d;
+    if (acc >= minDist) {
+      out.push(p);
+      last = p;
+      acc = 0;
+    }
+  }
+  const tail = stroke[stroke.length - 1];
+  const lastOut = out[out.length - 1];
+  if (lastOut.x !== tail.x || lastOut.y !== tail.y) {
+    out.push(tail);
+  }
+  return out;
+}
+
+// スムージング＋間引きを適用
+function applySmoothAndSimplify(){
+  const win  = +document.getElementById('smoothWin').value;
+  const minD = +document.getElementById('minDist').value;
+
+  strokes = strokes.map(s => {
+    const smoothed   = movingAverageKeepEnds(s, win);
+    const simplified = simplifyByMinDistance(smoothed, minD);
+    return simplified;
+  });
+
+  updateFramesAndPreview();
+}
+
+// -------------------- お絵描き / パン / ズーム --------------------
+const cvs=document.getElementById('cvs'); const ctx=cvs.getContext('2d')
+let tool='draw' // 'draw' | 'pan'
+let zoom=1; let offset={x:0,y:0}
+let drawing=[]; let panning={active:false,sx:0,sy:0,ox:0,oy:0}
+
+function setTool(t){tool=t;document.getElementById('toolDraw').classList.toggle('primary',t==='draw');document.getElementById('toolPan').classList.toggle('primary',t==='pan')}
+
+function logicalScale(){return CANVAS_PX/LOGICAL_SIZE}
+function toLogical(e){const r=cvs.getBoundingClientRect();const s=logicalScale();const x=(e.clientX-r.left-offset.x)/zoom/s;const y=(e.clientY-r.top-offset.y)/zoom/s;return {x:clamp180(x),y:clamp180(y)}}
+
+function startNewStroke(){strokes.push([])}
+function addPoint(p){
+  if(!strokes.length) strokes.push([]);
+  const cur = strokes[strokes.length-1];
+  const last = cur[cur.length-1];
+  if(last && last.x===p.x && last.y===p.y) return;
+  cur.push(p);
+}
+function rebuildFrames(){updateFramesAndPreview()}
+
+/* ---- マウス用イベント（元のまま） ---- */
+cvs.addEventListener('mousedown',e=>{
+  if(tool==='pan'){
+    panning={active:true,sx:e.clientX,sy:e.clientY,ox:offset.x,oy:offset.y};
+    return;
+  }
+  const p=toLogical(e); startNewStroke(); drawing=[p]; addPoint(p)
+})
+
+window.addEventListener('mousemove',e=>{
+  if(tool==='pan' && panning.active){
+    offset={x:panning.ox+(e.clientX-panning.sx),y:panning.oy+(e.clientY-panning.sy)};
+    draw(); 
+    return;
+  }
+  if(!drawing.length) return;
+  const p=toLogical(e);
+  const last=drawing[drawing.length-1];
+  const dx=Math.abs(p.x-last.x),dy=Math.abs(p.y-last.y)
+  if(dx+dy>=0.5){drawing.push(p); addPoint(p); draw()}
+})
+
+window.addEventListener('mouseup',()=>{if(drawing.length){drawing=[]; rebuildFrames()} panning.active=false})
+
+/* ---- ここから追加：タッチイベント（iPhone / iPad） ---- */
+function firstTouch(e){
+  return e.touches[0] || e.changedTouches[0];
+}
+
+cvs.addEventListener('touchstart', (e) => {
+  const t = firstTouch(e);
+  if (!t) return;
+  if (tool === 'pan') {
+    panning = {active:true, sx:t.clientX, sy:t.clientY, ox:offset.x, oy:offset.y};
+  } else {
+    const pe = {clientX:t.clientX, clientY:t.clientY};
+    const p = toLogical(pe);
+    startNewStroke();
+    drawing = [p];
+    addPoint(p);
+  }
+  e.preventDefault();
+}, {passive:false});
+
+window.addEventListener('touchmove', (e) => {
+  const t = firstTouch(e);
+  if (!t) return;
+
+  if (tool === 'pan' && panning.active) {
+    offset = {
+      x: panning.ox + (t.clientX - panning.sx),
+      y: panning.oy + (t.clientY - panning.sy)
+    };
+    draw();
+    e.preventDefault();
+    return;
+  }
+
+  if (!drawing.length) return;
+  const pe = {clientX:t.clientX, clientY:t.clientY};
+  const p = toLogical(pe);
+  const last = drawing[drawing.length-1];
+  const dx = Math.abs(p.x-last.x);
+  const dy = Math.abs(p.y-last.y);
+  if (dx+dy >= 0.5) {
+    drawing.push(p);
+    addPoint(p);
+    draw();
+  }
+  e.preventDefault();
+}, {passive:false});
+
+function endTouch(e){
+  if (drawing.length){
+    drawing = [];
+    rebuildFrames();
+  }
+  panning.active = false;
+  e.preventDefault();
+}
+
+window.addEventListener('touchend', endTouch, {passive:false});
+window.addEventListener('touchcancel', endTouch, {passive:false});
+
+// -------------------- 各種UI --------------------
+document.getElementById('zoom').addEventListener('input',e=>{zoom=parseFloat(e.target.value);document.getElementById('zoomLbl').textContent=zoom.toFixed(1)+'×';draw()})
+document.getElementById('toolDraw').addEventListener('click',()=>setTool('draw'))
+document.getElementById('toolPan').addEventListener('click',()=>setTool('pan'))
+document.getElementById('btnClear').addEventListener('click',()=>{strokes=[];updateFramesAndPreview()})
+document.getElementById('smoothWin').addEventListener('input',e=>{document.getElementById('smoothLbl').textContent=e.target.value})
+document.getElementById('minDist').addEventListener('input',e=>{document.getElementById('minDistLbl').textContent=e.target.value})
+document.getElementById('btnApplySmooth').addEventListener('click',applySmoothAndSimplify)
+
+// -------------------- 描画 --------------------
+function draw(){
+  ctx.clearRect(0,0,cvs.width,cvs.height)
+  ctx.save(); ctx.translate(offset.x,offset.y); ctx.scale(zoom,zoom)
+  const s=logicalScale();
+  ctx.strokeStyle='#eee'; ctx.lineWidth=1/zoom
+  for(let i=0;i<=LOGICAL_SIZE;i+=10){
+    ctx.beginPath();ctx.moveTo(i*s,0);ctx.lineTo(i*s,LOGICAL_SIZE*s);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,i*s);ctx.lineTo(LOGICAL_SIZE*s,i*s);ctx.stroke()
+  }
+  ctx.strokeStyle='#bbb'; ctx.beginPath(); ctx.moveTo(90*s,0); ctx.lineTo(90*s,LOGICAL_SIZE*s); ctx.moveTo(0,90*s); ctx.lineTo(LOGICAL_SIZE*s,90*s); ctx.stroke()
+  ctx.strokeStyle='#111'; ctx.lineWidth=2/zoom
+  for(const st of strokes){
+    if(!st.length) continue;
+    ctx.beginPath();
+    ctx.moveTo(st[0].x*s, st[0].y*s);
+    for(let i=1;i<st.length;i++){ctx.lineTo(st[i].x*s, st[i].y*s)}
+    ctx.stroke();
+  }
+  ctx.restore()
+}
+
+// -------------------- 入出力 --------------------
+function framesToJSON(list = frames){
+  return JSON.stringify(
+    { meta:{width:LOGICAL_SIZE,height:LOGICAL_SIZE,version:'mb-plotter-1'}, frames: list },
+    null,
+    2
+  );
+}
+
+function download(name,content,type='text/plain'){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
+
+document.getElementById('btnSaveRAW').addEventListener('click', () => {
+  const cleaned = cleanFrames(frames);
+  download('plot-raw5.txt', framesToRAW5(cleaned, false, 0));
+});
+
+document.getElementById('btnSaveRAWLines').addEventListener('click', () => {
+  const cleaned = cleanFrames(frames);
+  download('plot-raw5-lines.txt', framesToRAW5(cleaned, true, 20));
+});
+
+document.getElementById('btnSaveJSON').addEventListener('click', () => {
+  const cleaned = cleanFrames(frames);
+  download('plot.json', framesToJSON(cleaned), 'application/json');
+});
+
+// ファイル/ドロップ読み込み
+const fileInput=document.getElementById('file');
+fileInput.addEventListener('change',e=>{if(!fileInput.files?.length)return;handleFiles(fileInput.files)})
+
+const drop=document.getElementById('drop');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.borderColor='var(--accent)'})
+drop.addEventListener('dragleave',()=>{drop.style.borderColor='var(--line)'})
+drop.addEventListener('drop',e=>{e.preventDefault();drop.style.borderColor='var(--line)'; if(e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files)})
+
+async function handleFiles(files){
+  for(const file of files){
+    const text=await file.text()
+    if(file.name.endsWith('.svg')){
+      const svg=parseSVGText(text); if(!svg){alert('SVGの解析に失敗しました'); continue}
+      strokes=pointsFromSVG(svg,2)
+      updateFramesAndPreview()
+    }else if(file.name.endsWith('.json')){
+      try{
+        const pj=JSON.parse(text); if(!pj.frames||!Array.isArray(pj.frames)) throw 0
+        frames=pj.frames; strokes=framesToStrokes(frames); updateFramesAndPreview()
+      }catch{alert('JSON形式が不正です')}
+    }else if(file.name.endsWith('.txt')||file.name.endsWith('.hex')||file.name.endsWith('.dat')){
+      frames=parseRAW5(text); strokes=framesToStrokes(frames); updateFramesAndPreview()
+    }else{alert('対応拡張子: .svg / .json / .txt / .hex / .dat')}
+  }
+}
+
+// 初期描画
+updateFramesAndPreview()
+</script>
+
+<script>
+/* 下絵の処理（元のまま） */
+(function(){
+  const bgFile = document.getElementById('bgFile');
+  const bgClearBtn = document.getElementById('btnBgClear');
+  const bgOpacity = document.getElementById('bgOpacity');
+  const bgImgEl = document.getElementById('bgImgEl');
+
+  if(bgFile && bgImgEl){
+    bgFile.addEventListener('change', (e)=>{
+      const f = e.target.files && e.target.files[0];
+      if(!f){ return; }
+      const fr = new FileReader();
+      fr.onload = () => {
+        bgImgEl.src = fr.result;
+      };
+      fr.readAsDataURL(f);
+    });
+  }
+
+  if(bgClearBtn && bgImgEl){
+    bgClearBtn.addEventListener('click', ()=>{
+      bgImgEl.removeAttribute('src');
+    });
+  }
+
+  if(bgOpacity && bgImgEl){
+    bgOpacity.addEventListener('input', ()=>{
+      bgImgEl.style.opacity = String(bgOpacity.value);
+    });
+  }
+})();
+</script>
+</body>
+</html>
