@@ -456,13 +456,14 @@ function endTouch(e){
   if (drawing.length){
     drawing = [];
     rebuildFrames();
+    e.preventDefault();   // 描画していたときだけスクロール抑止
   }
   panning.active = false;
-  e.preventDefault();
 }
 
-window.addEventListener('touchend', endTouch, {passive:false});
-window.addEventListener('touchcancel', endTouch, {passive:false});
+// ★ ここを window ではなく canvas にバインドする
+cvs.addEventListener('touchend', endTouch, {passive:false});
+cvs.addEventListener('touchcancel', endTouch, {passive:false});
 
 // -------------------- 各種UI --------------------
 document.getElementById('zoom').addEventListener('input',e=>{zoom=parseFloat(e.target.value);document.getElementById('zoomLbl').textContent=zoom.toFixed(1)+'×';draw()})
@@ -587,3 +588,4 @@ updateFramesAndPreview()
 </script>
 </body>
 </html>
+
