@@ -107,7 +107,10 @@
       <div class="muted small">キャンバス（0–180 グリッド）。描画すると自動でRAW5/JSONが更新されます。</div>
       <div class="canvasBox" style="margin-top:8px">
         <div id="stage" style="position:relative; width:fit-content; margin:auto;">
-          <img id="bgImgEl" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0.35; pointer-events:none; z-index:2;">
+          <img id="bgImgEl" alt=""
+               style="position:absolute; inset:0; width:100%; height:100%;
+                      object-fit:contain; opacity:0.35; pointer-events:none;
+                      z-index:2; display:none;">
           <canvas id="cvs" width="520" height="520" style="position:relative; z-index:1;"></canvas>
         </div>
       </div>
@@ -591,5 +594,6 @@ updateFramesAndPreview()
 </script>
 </body>
 </html>
+
 
 
