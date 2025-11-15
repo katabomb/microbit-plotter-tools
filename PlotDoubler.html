@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>RAW5 / JSON ペンデータ x2 挿入ツール</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  body{font-family:sans-serif;max-width:800px;margin:1.5rem auto;padding:0 1rem;}
+  h1{font-size:1.2rem;margin-bottom:.7rem;}
+  #log{white-space:pre-wrap;background:#f5f5f5;padding:.5rem;border:1px solid #ddd;font-size:.85rem;}
+  button{margin:.25rem 0;padding:.4rem .9rem;}
+  .row{margin-bottom:1rem;}
+  input[type=file]{margin-bottom:.5rem;}
+</style>
+</head>
+<body>
+<h1>ペンプロッター用データ「点を増やして x2」するツール</h1>
+<div class="row">
+  <input id="fileInput" type="file" accept=".txt,.json,.dat,.hex" />
+  <button id="btnProcess" disabled>×2にしてダウンロード</button>
+</div>
+<div class="row" id="log">ファイルを選んでください。</div>
+
+<script>
+// --------------- 基本ヘルパー ---------------
+function unpackFrame(str){
+  // str: "1A0B5" みたいな5文字
+  const penUp = str[0] === '1';
+  const v = parseInt(str.slice(1), 16);
+  const y = (v >> 8) & 0xff;
+  const x = v & 0xff;
+  return {penUp, x, y};
+}
+function packFrame(penUp, x, y){
+  const v = ((y & 0xff) << 8) | (x & 0xff);
+  const s = v.toString(16).toUpperCase().padStart(4, '0');
+  return (penUp ? '1' : '0') + s;
+}
+
+// RAW5文字列を配列に
+function parseRAW5(text){
+  // 改行やスペースを全部取って5文字ずつ
+  const clean = text.replace(/[\s\r\n]+/g, '');
+  const out = [];
+  for(let i=0; i+5<=clean.length; i+=5){
+    out.push(clean.slice(i, i+5));
+  }
+  return out;
+}
+
+// 配列をRAW5文字列(20個ごとに改行)に
+function framesToRAW5(frames, perLine=20){
+  let out = '';
+  for(let i=0;i<frames.length;i++){
+    out += frames[i];
+    if((i+1)%perLine===0) out += '\n';
+  }
+  if(out[out.length-1] !== '\n') out += '\n';
+  return out;
+}
+
+// ダウンロード
+function download(name, text, mime='text/plain'){
+  const blob = new Blob([text], {type:mime});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+
+// --------------- コア：×2にする ---------------
+// ルール：
+//   - 連続する2フレーム f[i], f[i+1] がどちらも「ペンダウン(0)」かつ座標が違うなら
+//     → その間に中間点(0, midX, midY)を1個はさむ
+//   - ペンアップ(1)のときはそのまま（移動中は増やさない）
+// これだけでだいたい「倍」に近くなります
+function upsampleFrames(frames){
+  const out = [];
+  for(let i=0;i<frames.length;i++){
+    const cur = frames[i];
+    out.push(cur);
+
+    const next = frames[i+1];
+    if(!next) break;
+
+    const u0 = unpackFrame(cur);
+    const u1 = unpackFrame(next);
+
+    // 両方ペンダウンで座標が違うときだけ中間点
+    if(!u0.penUp && !u1.penUp && (u0.x !== u1.x || u0.y !== u1.y)){
+      const mx = Math.round((u0.x + u1.x)/2);
+      const my = Math.round((u0.y + u1.y)/2);
+      out.push(packFrame(false, mx, my));
+    }
+  }
+  return out;
+}
+
+// --------------- JSON対応 ---------------
+function jsonToFrames(obj){
+  // 形式: {frames:[...]} を想定
+  if(obj && Array.isArray(obj.frames)) return obj.frames;
+  throw new Error('JSONにframes配列がありません');
+}
+function framesToJSON(frames){
+  return JSON.stringify({
+    meta:{version:'mb-upsample-1', desc:'upsampled x2'},
+    frames
+  }, null, 2);
+}
+
+// --------------- UI処理 ---------------
+const fileInput = document.getElementById('fileInput');
+const btnProcess = document.getElementById('btnProcess');
+const log = document.getElementById('log');
+
+let loadedName = null;
+let loadedFrames = null;
+let loadedKind = null; // "raw5" or "json"
+
+fileInput.addEventListener('change', async (e)=>{
+  const f = e.target.files[0];
+  if(!f){
+    log.textContent = 'ファイルが選択されていません。';
+    btnProcess.disabled = true;
+    return;
+  }
+  loadedName = f.name;
+  const text = await f.text();
+  try{
+    if(f.name.endsWith('.json')){
+      const obj = JSON.parse(text);
+      loadedFrames = jsonToFrames(obj);
+      loadedKind = 'json';
+    }else{
+      loadedFrames = parseRAW5(text);
+      loadedKind = 'raw5';
+    }
+    log.textContent =
+      `読み込み成功: ${loadedName}\n` +
+      `形式: ${loadedKind}\n` +
+      `元のフレーム数: ${loadedFrames.length}`;
+    btnProcess.disabled = false;
+  }catch(err){
+    log.textContent = '読み込みに失敗しました: ' + err.message;
+    btnProcess.disabled = true;
+  }
+});
+
+btnProcess.addEventListener('click', ()=>{
+  if(!loadedFrames){
+    log.textContent = '先にファイルを読み込んでください。';
+    return;
+  }
+  const up = upsampleFrames(loadedFrames);
+  log.textContent +=
+    `\n変換後フレーム数: ${up.length}`;
+
+  // 名前をつけ直す
+  let newName = loadedName;
+  const dot = loadedName.lastIndexOf('.');
+  if(dot > 0){
+    newName = loadedName.slice(0, dot) + '-x2' + loadedName.slice(dot);
+  }else{
+    newName = loadedName + '-x2.txt';
+  }
+
+  if(loadedKind === 'json'){
+    download(newName, framesToJSON(up), 'application/json');
+  }else{
+    download(newName, framesToRAW5(up, 20), 'text/plain');
+  }
+});
+</script>
+</body>
+</html>
