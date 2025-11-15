@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>micro:bit プロッター 2枚比較ビューワー</title>
+<style>
+  :root{--bg:#fafafa;--fg:#111;--muted:#666;--line:#e5e7eb;--accent:#0ea5e9}
+  html,body{height:100%}
+  body{margin:0;font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif;background:var(--bg);color:var(--fg)}
+  header{max-width:1180px;margin:0 auto;padding:16px}
+  h1{font-size:20px;margin:0 0 6px}
+  .muted{color:var(--muted)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px 16px;display:grid;grid-template-columns:360px 1fr;gap:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .row>*{flex:0 0 auto}
+  button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 10px;cursor:pointer}
+  button.primary{background:var(--accent);color:#fff;border-color:transparent}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:10px;text-align:center}
+  input[type="range"]{width:160px}
+  .small{font-size:12px}
+  .canvasBox{display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:16px;height:min(80vh,720px)}
+  canvas{
+    background:#fff;
+    border-radius:12px;
+    box-shadow:0 0 0 1px var(--line) inset;
+    touch-action:none;           /* iPhoneでのスクロール/ズーム無効化 */
+    -webkit-user-select:none;    /* 長押し選択防止（お好み） */
+    user-select:none;
+  }
+  .modeBtn.active{background:var(--accent);color:#fff;border-color:transparent}
+  .stat{font:12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+</style>
+</head>
+<body>
+  <header>
+    <h1>micro:bit プロッター 2枚比較ビューワー</h1>
+    <div class="muted small">RAW5（0/1+YYXX）/ JSON を2枚読み込み、<b>左右並列・重ね・点滅</b>で比較。<br>※この版は「初版」から <b>線色を固定色</b>・<b>左右並列の論理幅=360</b> にする<span style="white-space:nowrap">最小修正</span>です。</div>
+  </header>
+
+  <div class="wrap">
+    <aside class="card">
+      <div class="small muted" style="font-weight:600">入力</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+        <div>
+          <div class="small" style="font-weight:600;color:#1d4ed8">A</div>
+          <div class="row">
+            <input id="fileA" type="file" accept=".json,.txt,.hex,.dat" />
+          </div>
+          <div id="dropA" class="drop small">ここに A をドロップ（JSON/RAW5）</div>
+          <div class="small stat" id="lenA">A: 0点</div>
+        </div>
+        <div>
+          <div class="small" style="font-weight:600;color:#dc2626">B</div>
+          <div class="row">
+            <input id="fileB" type="file" accept=".json,.txt,.hex,.dat" />
+          </div>
+          <div id="dropB" class="drop small">ここに B をドロップ（JSON/RAW5）</div>
+          <div class="small stat" id="lenB">B: 0点</div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:12px 0" />
+
+      <div class="small muted" style="font-weight:600">表示モード</div>
+      <div class="row" style="margin-top:6px">
+        <button id="modeSide" class="modeBtn active">左右並列</button>
+        <button id="modeOverlay" class="modeBtn">重ね比較</button>
+        <button id="modeBlink" class="modeBtn">A/B点滅</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <label class="small">Bの不透明度</label>
+        <input id="alphaB" type="range" min="0" max="1" step="0.05" value="0.7" />
+        <span id="alphaBLbl" class="small">0.70</span>
+      </div>
+      <div class="row">
+        <label class="small">線幅</label>
+        <input id="strokeW" type="range" min="1" max="4" step="1" value="2" />
+        <span id="strokeWLbl" class="small">2</span>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:12px 0" />
+
+      <div class="grid2">
+        <div>
+          <div class="small muted" style="font-weight:600">ズーム/パン</div>
+          <div class="row" style="margin-top:6px">
+            <label class="small">ズーム</label>
+            <input id="zoom" type="range" min="0.5" max="4" step="0.1" value="1" />
+            <span id="zoomLbl" class="small">1.0×</span>
+          </div>
+          <div class="small muted">ドラッグでパン、ダブルクリックで原点に戻す</div>
+        </div>
+        <div>
+          <div class="small muted" style="font-weight:600">メトリクス</div>
+          <div id="metrics" class="stat">A: 0点 / B: 0点 / 総距離 A:0, B:0</div>
+        </div>
+      </div>
+
+    </aside>
+
+    <main class="card">
+      <div class="canvasBox">
+        <canvas id="cvs" width="520" height="520"></canvas>
+      </div>
+      <div class="small muted" style="margin-top:6px">グリッドは0–180。<b>左右並列</b>時は論理幅を<b>360</b>として A=青（0–180）、B=赤（180–360）にオフセット描画。重ね比較は A=青 / B=赤（透明度可変）。</div>
+    </main>
+  </div>
+
+<script>
+// ---------- 基本 ----------
+const LOGICAL_SIZE = 180
+const CANVAS_PX = 520
+const COLOR_A = '#1d4ed8' // 青（A）
+const COLOR_B = '#dc2626' // 赤（B）
+function clamp180(n){n=Math.round(n); if(n<0) return 0; if(n>180) return 180; return n}
+function toHex4(n){let s=(n&0xffff).toString(16).toUpperCase(); while(s.length<4) s='0'+s; return s}
+function unpackFrame(f){const penUp=f[0]==='1'; const v=parseInt(f.slice(1),16)&0xffff; const y=(v>>8)&0xff; const x=v&0xff; return {penUp,x,y}}
+function parseRAW5(raw){const cleaned=raw.replace(/[^0-9A-Fa-f\s]/g,'').replace(/\s+/g,''); const arr=[]; for(let i=0;i+5<=cleaned.length;i+=5){arr.push(cleaned.slice(i,i+5).toUpperCase())} return arr}
+function framesToStrokes(frs){const s=[]; let cur=[]; for(const f of frs){const {penUp,x,y}=unpackFrame(f); if(penUp){ if(cur.length) s.push(cur), cur=[]; cur.push({x,y}) } else { cur.push({x,y}) }} if(cur.length) s.push(cur); return s}
+
+// ---------- 状態 ----------
+let framesA=[], framesB=[]
+let strokesA=[], strokesB=[]
+let mode='side' // 'side' | 'overlay' | 'blink'
+let alphaB=0.7
+let strokeW=2
+let zoom=1, offset={x:0,y:0}
+let blinkOn=true, blinkTimer=null
+
+const cvs=document.getElementById('cvs'); const ctx=cvs.getContext('2d')
+
+// ---------- 入力 ----------
+const fileA=document.getElementById('fileA'), fileB=document.getElementById('fileB')
+fileA.addEventListener('change', async e=>{ if(!fileA.files?.length) return; await loadFile(fileA.files[0],'A') })
+fileB.addEventListener('change', async e=>{ if(!fileB.files?.length) return; await loadFile(fileB.files[0],'B') })
+
+async function loadFile(file, which){
+  const text=await file.text()
+  if(file.name.endsWith('.json')){
+    try{
+      const pj=JSON.parse(text);
+      if(!pj.frames) throw 0;
+      if(which==='A'){framesA=pj.frames;strokesA=framesToStrokes(framesA)}
+      else {framesB=pj.frames;strokesB=framesToStrokes(framesB)}
+    }
+    catch{ alert(which+': JSON形式が不正です') }
+  } else if(file.name.endsWith('.txt')||file.name.endsWith('.hex')||file.name.endsWith('.dat')){
+    const arr=parseRAW5(text);
+    if(which==='A'){framesA=arr;strokesA=framesToStrokes(arr)}
+    else {framesB=arr;strokesB=framesToStrokes(arr)}
+  } else {
+    alert('対応拡張子: .json / .txt / .hex / .dat')
+  }
+  updateMetrics(); draw()
+}
+
+function bindDrop(id, which){
+  const el=document.getElementById(id)
+  el.addEventListener('dragover',e=>{e.preventDefault(); el.style.borderColor='var(--accent)'})
+  el.addEventListener('dragleave',()=>{el.style.borderColor='var(--line)'})
+  el.addEventListener('drop',async e=>{e.preventDefault(); el.style.borderColor='var(--line)'; if(e.dataTransfer?.files?.length) await loadFile(e.dataTransfer.files[0],which)})
+}
+bindDrop('dropA','A'); bindDrop('dropB','B')
+
+// ---------- UI制御 ----------
+function setMode(m){
+  mode=m;
+  document.getElementById('modeSide').classList.toggle('active',m==='side');
+  document.getElementById('modeOverlay').classList.toggle('active',m==='overlay');
+  document.getElementById('modeBlink').classList.toggle('active',m==='blink');
+  if(blinkTimer){clearInterval(blinkTimer); blinkTimer=null}
+  if(m==='blink'){
+    blinkOn=true;
+    blinkTimer=setInterval(()=>{blinkOn=!blinkOn; draw()}, 800)
+  }
+  draw()
+}
+
+document.getElementById('modeSide').addEventListener('click',()=>setMode('side'))
+document.getElementById('modeOverlay').addEventListener('click',()=>setMode('overlay'))
+document.getElementById('modeBlink').addEventListener('click',()=>setMode('blink'))
+
+document.getElementById('alphaB').addEventListener('input',e=>{
+  alphaB=parseFloat(e.target.value);
+  document.getElementById('alphaBLbl').textContent=alphaB.toFixed(2);
+  draw()
+})
+
+document.getElementById('strokeW').addEventListener('input',e=>{
+  strokeW=parseInt(e.target.value);
+  document.getElementById('strokeWLbl').textContent=strokeW;
+  draw()
+})
+
+document.getElementById('zoom').addEventListener('input',e=>{
+  zoom=parseFloat(e.target.value);
+  document.getElementById('zoomLbl').textContent=zoom.toFixed(1)+'×';
+  draw()
+})
+
+// ---------- パン/ズーム操作（マウス） ----------
+let panning=false, sx=0, sy=0, ox=0, oy=0
+cvs.addEventListener('mousedown',e=>{
+  panning=true;
+  sx=e.clientX; sy=e.clientY;
+  ox=offset.x; oy=offset.y
+})
+window.addEventListener('mousemove',e=>{
+  if(!panning) return;
+  offset.x=ox+(e.clientX-sx);
+  offset.y=oy+(e.clientY-sy);
+  draw()
+})
+window.addEventListener('mouseup',()=>{panning=false})
+cvs.addEventListener('dblclick',()=>{
+  offset={x:0,y:0};
+  zoom=1;
+  document.getElementById('zoom').value='1';
+  document.getElementById('zoomLbl').textContent='1.0×';
+  draw()
+})
+
+// ---------- タッチでのパン（iPhone / iPad 用） ----------
+function firstTouch(e){
+  return e.touches[0] || e.changedTouches[0];
+}
+
+cvs.addEventListener('touchstart', (e) => {
+  const t = firstTouch(e);
+  if (!t) return;
+  panning = true;
+  sx = t.clientX;
+  sy = t.clientY;
+  ox = offset.x;
+  oy = offset.y;
+  e.preventDefault();          // キャンバス上のスクロールを止める
+}, { passive: false });
+
+cvs.addEventListener('touchmove', (e) => {
+  if (!panning) return;
+  const t = firstTouch(e);
+  if (!t) return;
+  offset.x = ox + (t.clientX - sx);
+  offset.y = oy + (t.clientY - sy);
+  draw();
+  e.preventDefault();
+}, { passive: false });
+
+cvs.addEventListener('touchend', (e) => {
+  panning = false;
+}, { passive: false });
+
+cvs.addEventListener('touchcancel', (e) => {
+  panning = false;
+}, { passive: false });
+
+// ---------- ここからが最小修正（色と横幅） ----------
+function logicalExtent(){ return mode==='side' ? 360 : 180 }
+function logicalScale(){ return CANVAS_PX / logicalExtent() }
+
+function drawGrid(){
+  const s=logicalScale();
+  const extent=logicalExtent();
+  ctx.strokeStyle='#eee'; ctx.lineWidth=1/zoom;
+  for(let i=0;i<=extent;i+=10){
+    ctx.beginPath(); ctx.moveTo(i*s, 0); ctx.lineTo(i*s, 180*s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, (i*(180/extent))*s); ctx.lineTo(extent*s, (i*(180/extent))*s); ctx.stroke();
+  }
+  ctx.strokeStyle='#bbb'; ctx.beginPath();
+  ctx.moveTo(90*s,0); ctx.lineTo(90*s,180*s);
+  if(extent===360){ ctx.moveTo(270*s,0); ctx.lineTo(270*s,180*s); }
+  ctx.moveTo(0,90*s); ctx.lineTo(extent*s,90*s);
+  ctx.stroke();
+}
+
+function drawStrokes(sts, color, alpha=1, offsetLogicalX=0){
+  const s=logicalScale();
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.strokeStyle=color;
+  ctx.lineWidth=strokeW/zoom;
+  for(const st of sts){
+    if(!st.length) continue;
+    ctx.beginPath();
+    ctx.moveTo((st[0].x+offsetLogicalX)*s, st[0].y*s);
+    for(let i=1;i<st.length;i++){
+      ctx.lineTo((st[i].x+offsetLogicalX)*s, st[i].y*s)
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  ctx.save();
+  ctx.translate(offset.x,offset.y);
+  ctx.scale(zoom,zoom);
+  drawGrid();
+  if(mode==='side'){
+    drawStrokes(strokesA, COLOR_A, 1, 0);
+    drawStrokes(strokesB, COLOR_B, 1, 180);
+  } else if(mode==='overlay'){
+    drawStrokes(strokesA, COLOR_A, 1, 0);
+    drawStrokes(strokesB, COLOR_B, alphaB, 0);
+  } else if(mode==='blink'){
+    if(blinkOn){
+      drawStrokes(strokesA, COLOR_A, 1, 0)
+    } else {
+      drawStrokes(strokesB, COLOR_B, 1, 0)
+    }
+  }
+  ctx.restore();
+}
+// ---------- 最小修正ここまで ----------
+
+// ---------- 簡易メトリクス ----------
+function pathLength(sts){
+  let sum=0;
+  for(const st of sts){
+    for(let i=1;i<st.length;i++){
+      const a=st[i-1], b=st[i];
+      sum += Math.hypot(b.x-a.x, b.y-a.y);
+    }
+  }
+  return sum;
+}
+
+function updateMetrics(){
+  const ptsA = strokesA.reduce((s,st)=>s+st.length,0);
+  const ptsB = strokesB.reduce((s,st)=>s+st.length,0);
+  const lenA = pathLength(strokesA).toFixed(1);
+  const lenB = pathLength(strokesB).toFixed(1);
+  const met = document.getElementById('metrics');
+  if(met) met.textContent = `A: ${ptsA}点 / B: ${ptsB}点 / 総距離 A:${lenA}, B:${lenB}`;
+  const la = document.getElementById('lenA'); if(la) la.textContent = `A: ${ptsA}点`;
+  const lb = document.getElementById('lenB'); if(lb) lb.textContent = `B: ${ptsB}点`;
+}
+
+// 初期
+updateMetrics();
+draw();
+</script>
+</body>
+</html>
