@@ -215,22 +215,22 @@
       キャンバス（0–180 グリッド）。描画すると自動で RAW5 / JSON が更新されます。
     </div>
     <div class="canvasBox" style="margin-top:8px">
-      <div id="stage">
-          <img id="bgImgEl" 
-               alt=""
-               style="position:absolute; inset:0;
-                      width:100%; height:100%;
-                      object-fit:contain;
-                      opacity:0.35;
-                      pointer-events:none;
-                      z-index:1;      /* ← グリッドより前へ！ */
-                      display:none;" />
-
-          <canvas id="cvs"
-                  width="520" height="520"
-                  style="position:absolute; inset:0;
-                         z-index:2;      /* ← 下絵より前（線はこちら） */
-                         touch-action:none;" />
+      <div id="stage" style="position:relative; width:520px; height:520px; background:white;   /* ★ 白背景 */
+                  margin:auto;">
+        <img id="bgImgEl"
+             style="position:absolute; inset:0;
+                    width:100%; height:100%;
+                    object-fit:contain;
+                    opacity:0.35;
+                    pointer-events:none;
+                    display:none;
+                    z-index:1;" />
+        <canvas id="cvs"
+                width="520" height="520"
+                style="position:absolute; inset:0;
+                       z-index:2;
+                       background:transparent;    /* ★ 透明に */
+                       touch-action:none;" />
       </div>
     </div>
     <div class="small muted" style="margin-top:6px">
@@ -864,4 +864,5 @@ updateFramesAndPreview();
 
 </body>
 </html>
+
 
