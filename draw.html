@@ -575,7 +575,10 @@ updateFramesAndPreview()
 
   if(bgClearBtn && bgImgEl){
     bgClearBtn.addEventListener('click', ()=>{
-      bgImgEl.removeAttribute('src');
+      // ★ ここを強めにリセットする
+      bgImgEl.src = "";              // 実際のsrcも空にする
+      bgImgEl.removeAttribute('src'); // 念のため属性も消す
+      if (bgFile) bgFile.value = "";  // ファイル選択もクリア
     });
   }
 
@@ -588,4 +591,5 @@ updateFramesAndPreview()
 </script>
 </body>
 </html>
+
 
