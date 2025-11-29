@@ -7,7 +7,7 @@
 |.png画像|元画（に近い）|描画用1|描画用2|MakeCode|
 |:---:|:---:|:---:|:---:|:---:|
 |![聖夜](Christmas/クリスマス.png)||[クリスマス.txt](Christmas/クリスマス.txt)|||
-|![波と船](cruiser/海とクルーザー.png)||[海とクルーザー.txt](cruiser/海とクルーザー.txt)|||
+|![波と船](cruiser/cruiser.png)||[cruiser.txt](cruiser/cruiser.txt)|||
 |![浜辺](hamabe/浜辺.png)|[浜辺.txt](hamabe/浜辺.txt)|[浜辺3.txt](hamabe/浜辺3.txt)|||
 |![信号の消えた街](heya/信号の消えた街2.png)||[信号の消えた街2.txt](heya/信号の消えた街2.txt)|||
 |![星月夜線描](hoshitsukiyo/星月夜線描.png)|[星月夜線描青.txt](hoshitsukiyo/星月夜線描青.txt)|[星月夜線描茶.txt](hoshitsukiyo/星月夜線描茶.txt)|[星月夜線描青4.txt](hoshitsukiyo/星月夜線描青4.txt)||
