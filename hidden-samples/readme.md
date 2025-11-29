@@ -14,8 +14,8 @@
 |![入道雲と家](ietokumo/入道雲と家.png)||[入道雲と家.txt](ietokumo/入道雲と家.txt)|||
 |![沈黙の受胎告知](jutaikokuchi/沈黙の受胎告知.png)|[沈黙の受胎告知.txt](jutaikokuchi/沈黙の受胎告知.txt)|[沈黙の受胎告知2.txt](jutaikokuchi/沈黙の受胎告知2.txt)|||
 |![microbit](microbit/microbit3.png)|[microbit.txt](microbit/microbit.txt)|[microbit3.txt](microbit/microbit3.txt)|||
-|![モナリザ](monalisa/モナリザ.png)|[モナリザ.txt](monalisa/モナリザ.txt)|[モナリザ5.txt](monalisa/モナリザ.txt)|||
-|![モナリザ線描](monalisa_line/モナリザ線描.png)||[モナリザ線描.txt](monalisa_line/モナリザ線描.txt)|||
+|![モナリザ](monalisa/monalisa.png)|[monalisa.txt](monalisa/monsalisa.txt)|[monsalisa5.txt](monalisa/monalisa5.txt)|||
+|![モナリザ線描](monalisa_line/monalisaline.png)||[monalisaline.txt](monalisa_line/monalisaline.txt)|||
 |![斜位](shai/斜位3.png)|[斜位1.txt](shai/斜位1.txt)|[斜位4.txt](shai/斜位4.txt)|||
 |![座るひと](suwaruhito/座るひと2.png)|[座るひと.txt](suwaruhito/座るひと.txt)|[座るひと3.txt](suwaruhito/座るひと3.txt)|||
 |![山](yama/山.png)||[山.txt](yama/山.txt)|||
