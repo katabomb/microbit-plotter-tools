@@ -9,7 +9,7 @@
 |:---:|:---:|:---:|:---:|:---:|
 |聖夜|![聖夜](Christmas/christmas.png)||[christmas.txt](Christmas/christmas.txt)|[christmas.hex](Christmas/christmas.hex)|
 |波とクルーザー|![波とクルーザー](cruiser/cruiser.png)||[cruiser.txt](cruiser/cruiser.txt)|[cruiser.hex](cruiser/cruiser.hex)|
-|浜辺|![浜辺](hamabe/浜辺.png)|[hamabe.txt](hamabe/hamabe.txt)|[hamabe3.txt](hamabe/hamabe3.txt)|[hamabe.hex](hamabe/hamabe.hex)|
+|浜辺|![浜辺](hamabe/hamabe.png)|[hamabe.txt](hamabe/hamabe.txt)|[hamabe3.txt](hamabe/hamabe3.txt)|[hamabe.hex](hamabe/hamabe.hex)|
 |信号の消えた街|![信号の消えた街](heya/heya2.png)||[heya2.txt](heya/heya2.txt)|[heya.hex](heya/heya.hex)|
 |星月夜|![星月夜線描](hoshitsukiyo/hoshitsukiyo.png)|[hoshitsukiyoBL.txt](hoshitsukiyo/hoshitsukiyoBL.txt)|[hoshitsukiyoBR.txt](hoshitsukiyo/hoshitsukiyoBR.txt) [hoshitsukiyoBL4.txt](hoshitsukiyo/hoshitsukiyoBL4.txt)|[hoshitsukiyoBR.hex](hoshitsukiyo/hoshitsukiyoBR.hex) [hoshitsukiyoBL.hex](hoshitsukiyo/hoshitsukiyoBL.hex)|
 |入道雲と家|![入道雲と家](ietokumo/ietokumo.png)||[ietokumo.txt](ietokumo/ietokumo.txt)|[ietokumo.hex](ietokumo/ietokumo.hex)|
