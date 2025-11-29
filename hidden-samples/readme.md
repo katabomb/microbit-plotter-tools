@@ -6,10 +6,16 @@
 
 |.png画像|元画（に近い）|描画用1|描画用2|MakeCode|
 |:---:|:---:|:---:|:---:|:---:|
-|![星月夜線描](hoshitsukiyo/星月夜線描.png)||[星月夜線描青_every-4000.txt](hoshitsukiyo/星月夜線描青_every-4000.txt)|[星月夜線描茶.txt](hoshitsukiyo/星月夜線描茶.txt)|[星月夜線描青.txt](hoshitsukiyo/星月夜線描青.txt)||
-|![モナリザ線描](monalisa_line/モナリザ線描.png)||[モナリザ線描.txt](monalisa_line/モナリザ線描.txt)|||
-|![斜位](shai/斜位3.png)|[斜位1.txt](shai/斜位1.txt)|[斜位4.txt](shai/斜位4.txt)|||
 |![聖夜](Christmas/クリスマス.png)||[クリスマス.txt](Christmas/クリスマス.txt)|||
 |![波と船](cruiser/海とクルーザー.png)||[海とクルーザー.txt](cruiser/海とクルーザー.txt)|||
 |![浜辺](hamabe/浜辺.png)|[浜辺.txt](hamabe/浜辺.txt)|[浜辺3.txt](hamabe/浜辺3.txt)|||
 |![信号の消えた街](heya/信号の消えた街2.png)||[信号の消えた街2.txt](heya/信号の消えた街2.txt)|||
+|![星月夜線描](hoshitsukiyo/星月夜線描.png)|[星月夜線描青.txt](hoshitsukiyo/星月夜線描青.txt)|[星月夜線描茶.txt](hoshitsukiyo/星月夜線描茶.txt)|[星月夜線描青4.txt](hoshitsukiyo/星月夜線描青4.txt)||
+|![入道雲と家](ietokumo/入道雲と家.png)||[入道雲と家.txt](ietokumo/入道雲と家.txt)|||
+|![沈黙の受胎告知](jutaikokuchi/沈黙の受胎告知.png)|[沈黙の受胎告知.txt](jutaikokuchi/沈黙の受胎告知.txt)|[沈黙の受胎告知2.txt](jutaikokuchi/沈黙の受胎告知2.txt)|||
+|![microbit](microbit/microbit3.png)|[microbit.txt](microbit/microbit.txt)|[microbit3.txt](microbit/microbit3.txt)|||
+|![モナリザ](monalisa/モナリザ.png)|[モナリザ.txt](monalisa/モナリザ.txt)|[モナリザ5.txt](monalisa/モナリザ.txt)|||
+|![モナリザ線描](monalisa_line/モナリザ線描.png)||[モナリザ線描.txt](monalisa_line/モナリザ線描.txt)|||
+|![斜位](shai/斜位3.png)|[斜位1.txt](shai/斜位1.txt)|[斜位4.txt](shai/斜位4.txt)|||
+|![座るひと](suwaruhito/座るひと2.png)|[座るひと.txt](suwaruhito/座るひと.txt)|[座るひと3.txt](suwaruhito/座るひと3.txt)|||
+|![山](yama/山.png)||[山.txt](yama/山.txt)|||
