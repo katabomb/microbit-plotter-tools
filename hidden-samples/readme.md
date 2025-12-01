@@ -16,7 +16,7 @@
 |沈黙の受胎告知|![沈黙の受胎告知](jutaikokuchi/jutaikokuchi.png)|[jutaikokuchi.txt](jutaikokuchi/jutaikokuchi.txt)|[jutaikokuchi2.txt](jutaikokuchi/jutaikokuchi2.txt)|[jutaikokuchi.hex](jutaikokuchi/jutaikokuchi.hex)|
 |micro:bit|![microbit](microbit/microbit3.png)|[microbit.txt](microbit/microbit.txt)|[microbit3.txt](microbit/microbit3.txt)|[microbit.hex](microbit/microbit.hex)|
 |モナリザ|![モナリザ](monalisa/monalisa.png)|[monalisa.txt](monalisa/monsalisa.txt)|[monsalisa5.txt](monalisa/monalisa5.txt)|[monalisaA.hex](monalisa/monalisaA.hex) [monalisaB.hex](monalisa/monalisaB.hex) [monalisaC.hex](monalisa/monalisaC.hex)|
-|モナリザ（線描）|![モナリザ線描](monalisa_line/mona3.png)|[monahaikei.txt](monalisa_line/monahaikei.txt) [monado.txt](monalisa_line/monado.txt) [monate.txt](monalisa_line/monate.txt) [monakao.txt](monalisa_line/monakao.txt)|[mona3.txt](monalisa_line/mona3.txt)|[monalisaline.hex](monalisa_line/monalisaline.hex)|
+|モナリザ（線描）|![モナリザ線描](monaline/mon2.png)|[monhaikei.txt](monaline/monhaikei.txt) [mondo.txt](monaline/mondo.txt) [monte.txt](monaline/monte.txt) [monkao.txt](monaline/monkao.txt)|[mon.txt](monaline/mon2.txt)|[monaline.hex](monaline/monaline.hex)|
 |斜位|![斜位](shai/shai3.png)|[shai1.txt](shai/shai1.txt)|[shai4.txt](shai/shai4.txt)|[shai.hex](shai/shai.hex)|
 |座るひと|![座るひと](suwaruhito/suwaruhito2.png)|[suwaruhito.txt](suwaruhito/suwaruhito.txt)|[suwaruhito3.txt](suwaruhito/suwaruhito3.txt)|[suwaruhito.hex](suwaruhito/suwaruhito.hex)|
 |山|![山](yama/yama.png)||[yama.txt](yama/山.txt)|[yama.hex](yama/yama.hex)|
