@@ -20,5 +20,5 @@
 |モナリザ（線描）|![モナリザ線描](monaline/mon2.png)|[monhaikei.txt](monaline/monhaikei.txt) [mondo.txt](monaline/mondo.txt) [monte.txt](monaline/monte.txt) [monkao.txt](monaline/monkao.txt)|[mon.txt](monaline/mon.txt)|[monaline.hex](monaline/monaline.hex)|
 |斜位|![斜位](shai/shai3.png)|[shai1.txt](shai/shai1.txt)|[shai4.txt](shai/shai4.txt)|[shai.hex](shai/shai.hex)|
 |座るひと|![座るひと](suwaruhito/suwaruhito2.png)|[suwaruhito.txt](suwaruhito/suwaruhito.txt)|[suwaruhito3.txt](suwaruhito/suwaruhito3.txt)|[suwaruhito.hex](suwaruhito/suwaruhito.hex)|
-|干支の午|![干支の午](uma/uma.png)|[uma.txt](uma/uma.txt)|[uma1.txt](uma/uma1.txt) uma2.txt](uma/uma2.txt)|[uma.hex](uma/uma.hex)|
+|干支の午|![干支の午](uma/uma.png)|[uma.txt](uma/uma.txt)|[uma1.txt](uma/uma1.txt) [uma2.txt](uma/uma2.txt)|[uma.hex](uma/uma.hex)|
 |山|![山](yama/yama.png)||[yama.txt](yama/山.txt)|[yama.hex](yama/yama.hex)|
