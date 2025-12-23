@@ -7,9 +7,14 @@
 
 [Protopedia](https://protopedia.net/prototype/7660)
 
+## フォトギャラリー
+### ペンプロッター本体
 ![penpotter](photos/plotter.jpg)
 ![penpotter](photos/IMG_4538.jpg)
+### micro:bit
+![penpotter](photos/microbit.jpg)
+### ペンプロッターツール
 ![penpotter](photos/tools.png)
 ![penpotter](photos/tools2.png)
+### 作品例
 ![penpotter](photos/IMG_4540.jpg)
-
