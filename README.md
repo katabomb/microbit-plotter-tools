@@ -15,7 +15,7 @@
 ![penpotter](photos/IMG_4538.jpg)
 ### micro:bit
 ![micro:bit](photos/microbit.jpg)
-### micro:bit
+### 回路図
 ![回路図](photos/kairozu.png)
 ### ペンプロッターツール
 ![ツール](photos/tools.png)
