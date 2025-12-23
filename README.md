@@ -7,6 +7,8 @@
 
 [Protopedia](https://protopedia.net/prototype/7660)
 
+[ペンプロッターツール集](https://katabomb.github.io/microbit-plotter-tools/)
+
 ## フォトギャラリー
 ### ペンプロッター本体
 ![penpotter](photos/plotter.jpg)
