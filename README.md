@@ -14,9 +14,11 @@
 ![penpotter](photos/plotter.jpg)
 ![penpotter](photos/IMG_4538.jpg)
 ### micro:bit
-![penpotter](photos/microbit.jpg)
+![micro:bit](photos/microbit.jpg)
+### micro:bit
+![回路図](photos/kairozu.png)
 ### ペンプロッターツール
-![penpotter](photos/tools.png)
-![penpotter](photos/tools2.png)
+![ツール](photos/tools.png)
+![ツール2](photos/tools2.png)
 ### 作品例
-![penpotter](photos/IMG_4540.jpg)
+![星月夜](photos/IMG_4540.jpg)
