@@ -1,4 +1,4 @@
-![サムネイル](thumbnail.png)
+![サムネイル](photos/thumbnail.png)
 
 [Youtube](https://youtu.be/s1bQL_ALQ78)
 
