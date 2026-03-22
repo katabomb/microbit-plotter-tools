@@ -233,7 +233,8 @@
           <button id="fitBtn" class="ghost">再描画</button>
         </div>
         <div class="help">
-          座標範囲は RAW5仕様に従い <code>x,y = 0〜180</code> です。
+          座標範囲は RAW5仕様に従い <code>x,y = 0〜180</code> です。<br>
+          この版ではプレビューを <strong>画面座標系どおり（yが下に行くほど増える）</strong> に表示します。
         </div>
       </div>
     </div>
@@ -327,7 +328,7 @@
         if (!/^[01][0-9A-F]{4}$/.test(frame)) {
           throw new Error("Invalid frame at index " + (i / 5) + ": " + frame);
         }
-        const { x, y } = unpackFrame(frame); // 範囲も検証
+        const { x, y } = unpackFrame(frame);
         if (x > 180 || y > 180) {
           throw new Error("Out-of-range frame at index " + (i / 5) + ": " + frame);
         }
@@ -375,10 +376,6 @@
     }
 
     // RAW5フレーム -> ストローク
-    // ルール:
-    //   penUp frame が来たら新ストローク開始位置
-    //   その後の penDown frame を同ストロークに追加
-    //   先頭penDownが同一点でなくてもそのまま受け入れる
     function framesToStrokes(frames) {
       const strokes = [];
       let currentStroke = null;
@@ -393,7 +390,6 @@
           continue;
         }
 
-        // penDown
         if (!currentStroke) {
           currentStroke = [];
           if (pendingMove) {
@@ -524,7 +520,8 @@
       const scale = Math.min((w - margin * 2) / range, (h - margin * 2) / range);
 
       function tx(x) { return margin + x * scale; }
-      function ty(y) { return h - margin - y * scale; }
+      // ここを修正: y=0 を上側にする
+      function ty(y) { return margin + y * scale; }
 
       if (els.showGrid.checked) {
         ctx.save();
@@ -543,7 +540,8 @@
         }
         ctx.strokeStyle = "#94a3b8";
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(tx(0), ty(180), 180 * scale, 180 * scale);
+        // ここも修正: 枠の左上を (0,0) にする
+        ctx.strokeRect(tx(0), ty(0), 180 * scale, 180 * scale);
         ctx.restore();
       }
 
@@ -613,8 +611,8 @@
       ctx.save();
       ctx.fillStyle = "#6b7280";
       ctx.font = "12px sans-serif";
-      ctx.fillText("(0,0)", tx(0) + 4, ty(0) - 6);
-      ctx.fillText("(180,180)", tx(180) - 70, ty(180) + 16);
+      ctx.fillText("(0,0)", tx(0) + 4, ty(0) + 14);
+      ctx.fillText("(180,180)", tx(180) - 70, ty(180) - 6);
       ctx.restore();
     }
 
@@ -635,7 +633,6 @@
     }
 
     function makeSampleRAW5() {
-      // 四角形 + 斜線のサンプル
       const strokes = [
         [
           {x:20,y:20},{x:160,y:20},{x:160,y:160},{x:20,y:160},{x:20,y:20}
