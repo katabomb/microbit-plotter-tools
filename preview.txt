@@ -1,131 +1,788 @@
-以下はchatGPTにRAW5 Viewer/Converter (preview.html)を生成させたときのプロンプトです．
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAW5 Viewer / Converter</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --panel:#ffffff;
+      --line:#d7dce5;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --accent:#2563eb;
+      --accent2:#0ea5e9;
+      --danger:#dc2626;
+      --ok:#059669;
+      --shadow:0 8px 24px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--text);
+      background:var(--bg);
+    }
+    .wrap{
+      max-width:1400px;
+      margin:0 auto;
+      padding:16px;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size:24px;
+    }
+    .sub{
+      color:var(--muted);
+      margin-bottom:16px;
+      line-height:1.6;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap:16px;
+    }
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .panel h2{
+      margin:0 0 12px;
+      font-size:18px;
+    }
+    textarea{
+      width:100%;
+      min-height:220px;
+      resize:vertical;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px;
+      font: 13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      background:#fff;
+      color:#111827;
+    }
+    .output{
+      min-height:180px;
+    }
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin:10px 0 0;
+      align-items:center;
+    }
+    button, .btn, select, input[type="number"], input[type="text"]{
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:10px 12px;
+      background:#fff;
+      color:var(--text);
+      font-size:14px;
+    }
+    button,.btn{
+      cursor:pointer;
+    }
+    button.primary{
+      background:var(--accent);
+      color:#fff;
+      border-color:var(--accent);
+    }
+    button.secondary{
+      background:var(--accent2);
+      color:#fff;
+      border-color:var(--accent2);
+    }
+    button.danger{
+      background:var(--danger);
+      color:#fff;
+      border-color:var(--danger);
+    }
+    button.ghost{
+      background:#fff;
+    }
+    label{
+      font-size:14px;
+      color:var(--text);
+    }
+    .muted{
+      color:var(--muted);
+      font-size:13px;
+    }
+    .status{
+      margin-top:10px;
+      font-size:14px;
+      color:var(--muted);
+      white-space:pre-wrap;
+    }
+    .status.ok{ color:var(--ok); }
+    .status.err{ color:var(--danger); }
+    .canvasWrap{
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      background:#fff;
+    }
+    canvas{
+      display:block;
+      width:100%;
+      height:auto;
+      background:#fff;
+    }
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(4,minmax(0,1fr));
+      gap:10px;
+      margin-top:12px;
+    }
+    .stat{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      background:#fafbfd;
+    }
+    .stat .k{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:4px;
+    }
+    .stat .v{
+      font-size:18px;
+      font-weight:700;
+    }
+    .two{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .small{
+      font-size:12px;
+    }
+    .help{
+      margin-top:8px;
+      line-height:1.6;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .badge{
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:12px;
+      background:#eef2ff;
+      color:#3730a3;
+      border:1px solid #c7d2fe;
+      margin-left:6px;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns:1fr; }
+      .stats{ grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .two{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>RAW5 Viewer / Converter <span class="badge">microbitペンプロッタ互換</span></h1>
+    <div class="sub">
+      RAW5正式仕様（<code>PYYXX</code> / 1フレーム5文字）をそのまま扱う単一HTMLアプリです。<br>
+      空白・改行を無視して読み込み、連結RAW5 / 20フレームごと改行RAW5 を書き出せます。
+    </div>
 
+    <div class="grid">
+      <div class="panel">
+        <h2>入力RAW5</h2>
+        <textarea id="inputRAW5" spellcheck="false" placeholder="RAW5を貼り付けてください。&#10;例: 1140A0140A0150A..."></textarea>
+        <div class="row">
+          <button id="parseBtn" class="primary">読み込み</button>
+          <button id="sampleBtn" class="ghost">サンプル</button>
+          <button id="clearBtn" class="danger">クリア</button>
+          <button id="pasteBtn" class="ghost">貼り付け</button>
+          <label class="btn">
+            ファイル読込
+            <input id="fileInput" type="file" accept=".txt,.raw5,.csv,text/plain" style="display:none">
+          </label>
+        </div>
+        <div id="inputStatus" class="status"></div>
 
+        <div class="stats">
+          <div class="stat"><div class="k">フレーム数</div><div class="v" id="frameCount">0</div></div>
+          <div class="stat"><div class="k">ストローク数</div><div class="v" id="strokeCount">0</div></div>
+          <div class="stat"><div class="k">penUp数</div><div class="v" id="penUpCount">0</div></div>
+          <div class="stat"><div class="k">penDown数</div><div class="v" id="penDownCount">0</div></div>
+        </div>
 
+        <div class="help">
+          読み込み時は空白・改行を無視し、5文字ずつ切り出して解釈します。<br>
+          1フレームは <code>PYYXX</code> で、<code>P=1</code> は penUp、<code>P=0</code> は penDown です。
+        </div>
+      </div>
 
+      <div class="panel">
+        <h2>プレビュー</h2>
+        <div class="canvasWrap">
+          <canvas id="preview" width="720" height="720"></canvas>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="showMoves" checked> penUp移動を表示</label>
+          <label><input type="checkbox" id="showGrid" checked> グリッド表示</label>
+          <label><input type="checkbox" id="showPoints"> 点を表示</label>
+          <button id="fitBtn" class="ghost">再描画</button>
+        </div>
+        <div class="help">
+          座標範囲は RAW5仕様に従い <code>x,y = 0〜180</code> です。<br>
+          この版ではプレビューを <strong>画面座標系どおり（yが下に行くほど増える）</strong> に表示します。
+        </div>
+      </div>
+    </div>
 
+    <div class="panel" style="margin-top:16px;">
+      <h2>RAW5書き出し</h2>
+      <div class="two">
+        <div>
+          <div class="muted">連結RAW5（空白なし・改行なし）</div>
+          <textarea id="outputJoined" class="output" spellcheck="false"></textarea>
+          <div class="row">
+            <button id="copyJoinedBtn" class="secondary">コピー</button>
+            <button id="saveJoinedBtn" class="ghost">保存</button>
+          </div>
+        </div>
+        <div>
+          <div class="muted">20フレームごと改行RAW5（フレーム間スペースあり）</div>
+          <textarea id="outputFormatted" class="output" spellcheck="false"></textarea>
+          <div class="row">
+            <button id="copyFormattedBtn" class="secondary">コピー</button>
+            <button id="saveFormattedBtn" class="ghost">保存</button>
+          </div>
+        </div>
+      </div>
+      <div id="outputStatus" class="status"></div>
+    </div>
 
-あなたは、HTML/CSS/JavaScriptだけで動く単一ファイルのWebアプリを作成する熟練フロントエンド開発者です。
+    <div class="panel" style="margin-top:16px;">
+      <h2>関数テスト</h2>
+      <div class="muted">
+        仕様上必要な関数 <code>packFrame</code> / <code>unpackFrame</code> / <code>parseRAW5</code> / <code>framesToRAW5</code> を実装済みです。
+      </div>
+      <div class="row">
+        <button id="selfTestBtn" class="ghost">セルフテスト実行</button>
+      </div>
+      <div id="testStatus" class="status"></div>
+    </div>
+  </div>
 
-このアプリは、microbitペンプロッタツールで現在使われているRAW5形式と完全互換でなければならない。
-既存ツールとの互換性を絶対に壊さないこと。
+  <script>
+    "use strict";
 
-【最重要】
-このプロジェクトでいうRAW5は、
-1点を「x,y,z」のCSV風テキストで表す形式ではない。
-RAW5は、1フレーム5文字の16進文字列を並べたプレーンテキスト形式である。
+    // =========================================================
+    // RAW5 core functions (正式仕様)
+    // =========================================================
 
-【RAW5正式仕様】
+    function clampCoord(n) {
+      n = Math.round(Number(n));
+      if (!Number.isFinite(n)) n = 0;
+      if (n < 0) n = 0;
+      if (n > 180) n = 180;
+      return n;
+    }
 
-1. 1フレームは必ず5文字
-   形式は
+    // packFrame(penUp, x, y) -> "PYYXX"
+    function packFrame(penUp, x, y) {
+      x = clampCoord(x);
+      y = clampCoord(y);
+      const packed = (((y & 0xff) << 8) | (x & 0xff)) >>> 0;
+      const hex4 = packed.toString(16).toUpperCase().padStart(4, "0");
+      return (penUp ? "1" : "0") + hex4;
+    }
 
-   PYYXX
+    // unpackFrame(frame) -> { penUp, x, y }
+    function unpackFrame(frame) {
+      if (typeof frame !== "string") throw new Error("frame must be string");
+      const f = frame.trim().toUpperCase();
+      if (!/^[01][0-9A-F]{4}$/.test(f)) {
+        throw new Error("invalid RAW5 frame: " + frame);
+      }
+      const penUp = f[0] === "1";
+      const y = parseInt(f.slice(1, 3), 16);
+      const x = parseInt(f.slice(3, 5), 16);
+      if (x < 0 || x > 180 || y < 0 || y > 180) {
+        throw new Error("coordinate out of range 0..180: " + frame);
+      }
+      return { penUp, x, y };
+    }
 
-   である。
+    // parseRAW5(text) -> 空白・改行を無視して5文字ごとの配列を返す
+    function parseRAW5(text) {
+      if (typeof text !== "string") text = String(text ?? "");
+      const cleaned = text.replace(/\s+/g, "").toUpperCase();
+      if (cleaned.length === 0) return [];
+      if (cleaned.length % 5 !== 0) {
+        throw new Error("RAW5 length is not a multiple of 5 after removing spaces/newlines.");
+      }
+      const frames = [];
+      for (let i = 0; i < cleaned.length; i += 5) {
+        const frame = cleaned.slice(i, i + 5);
+        if (!/^[01][0-9A-F]{4}$/.test(frame)) {
+          throw new Error("Invalid frame at index " + (i / 5) + ": " + frame);
+        }
+        const { x, y } = unpackFrame(frame);
+        if (x > 180 || y > 180) {
+          throw new Error("Out-of-range frame at index " + (i / 5) + ": " + frame);
+        }
+        frames.push(frame);
+      }
+      return frames;
+    }
 
-2. 各文字の意味
-   - P : ペン状態を表す1文字
-     - "1" = penUp（ペンを上げた移動）
-     - "0" = penDown（ペンを下ろした描画）
-   - YYXX : 座標を表す4桁の16進文字列
-     - 上位2桁 YY = y座標
-     - 下位2桁 XX = x座標
+    // framesToRAW5(frames, withSpaces=false, perLine=0)
+    function framesToRAW5(frames, withSpaces = false, perLine = 0) {
+      if (!Array.isArray(frames)) throw new Error("frames must be an array");
+      const normalized = frames.map((f, idx) => {
+        const s = String(f).trim().toUpperCase();
+        if (!/^[01][0-9A-F]{4}$/.test(s)) {
+          throw new Error("Invalid frame in frames[" + idx + "]: " + f);
+        }
+        return s;
+      });
 
-3. x, y は整数で 0〜180
-   保存時は丸め込み済み整数とすること。
+      if (perLine > 0) {
+        const lines = [];
+        for (let i = 0; i < normalized.length; i += perLine) {
+          const chunk = normalized.slice(i, i + perLine);
+          lines.push(withSpaces ? chunk.join(" ") : chunk.join(""));
+        }
+        return lines.join("\n");
+      }
+      return withSpaces ? normalized.join(" ") : normalized.join("");
+    }
 
-4. 1フレームの作り方
-   - 座標値は ((y & 0xff) << 8) | (x & 0xff) で16bit値にまとめる
-   - それを4桁の大文字16進文字列にする
-   - 先頭にペン状態文字 P を付ける
+    // ストローク -> RAW5フレーム
+    function strokesToFrames(strokes) {
+      const frames = [];
+      for (const stroke of strokes) {
+        if (!Array.isArray(stroke) || stroke.length === 0) continue;
+        const start = stroke[0];
+        frames.push(packFrame(true, start.x, start.y));
+        frames.push(packFrame(false, start.x, start.y));
+        for (let i = 1; i < stroke.length; i++) {
+          const p = stroke[i];
+          frames.push(packFrame(false, p.x, p.y));
+        }
+      }
+      return frames;
+    }
 
-   例:
-   x=10, y=20, penDown の場合
-   16bit値 = 0x140A
-   フレーム = "0140A"
+    // RAW5フレーム -> ストローク
+    function framesToStrokes(frames) {
+      const strokes = [];
+      let currentStroke = null;
+      let pendingMove = null;
 
-   x=10, y=20, penUp の場合
-   フレーム = "1140A"
+      for (const frame of frames) {
+        const p = unpackFrame(frame);
 
-【RAW5テキスト全体の扱い】
+        if (p.penUp) {
+          pendingMove = { x: p.x, y: p.y };
+          currentStroke = null;
+          continue;
+        }
 
-RAW5データ全体は、上記5文字フレームを並べたプレーンテキストとする。
+        if (!currentStroke) {
+          currentStroke = [];
+          if (pendingMove) {
+            currentStroke.push({ x: pendingMove.x, y: pendingMove.y });
+            if (pendingMove.x !== p.x || pendingMove.y !== p.y) {
+              currentStroke.push({ x: p.x, y: p.y });
+            }
+          } else {
+            currentStroke.push({ x: p.x, y: p.y });
+          }
+          strokes.push(currentStroke);
+          pendingMove = null;
+        } else {
+          currentStroke.push({ x: p.x, y: p.y });
+        }
+      }
 
-入力時は以下の両方を受け入れること:
-1. 連結RAW5
-   例:
-   1140A0140A0150A...
+      return strokes;
+    }
 
-2. 整形RAW5
-   - フレームの間に空白があってもよい
-   - 改行があってもよい
-   - 20フレームごと改行されていてもよい
+    // =========================================================
+    // UI
+    // =========================================================
+    const els = {
+      inputRAW5: document.getElementById("inputRAW5"),
+      parseBtn: document.getElementById("parseBtn"),
+      sampleBtn: document.getElementById("sampleBtn"),
+      clearBtn: document.getElementById("clearBtn"),
+      pasteBtn: document.getElementById("pasteBtn"),
+      fileInput: document.getElementById("fileInput"),
+      inputStatus: document.getElementById("inputStatus"),
 
-入力時は空白・改行を無視し、5文字ずつ切り出して解釈すること。
+      frameCount: document.getElementById("frameCount"),
+      strokeCount: document.getElementById("strokeCount"),
+      penUpCount: document.getElementById("penUpCount"),
+      penDownCount: document.getElementById("penDownCount"),
 
-【出力互換性】
+      canvas: document.getElementById("preview"),
+      showMoves: document.getElementById("showMoves"),
+      showGrid: document.getElementById("showGrid"),
+      showPoints: document.getElementById("showPoints"),
+      fitBtn: document.getElementById("fitBtn"),
 
-このアプリは最低でも次の2形式でRAW5を書き出せること:
+      outputJoined: document.getElementById("outputJoined"),
+      outputFormatted: document.getElementById("outputFormatted"),
+      outputStatus: document.getElementById("outputStatus"),
 
-1. 連結RAW5
-   - フレーム間に空白なし
-   - 改行なし
-   例:
-   1140A0140A0150A...
+      copyJoinedBtn: document.getElementById("copyJoinedBtn"),
+      copyFormattedBtn: document.getElementById("copyFormattedBtn"),
+      saveJoinedBtn: document.getElementById("saveJoinedBtn"),
+      saveFormattedBtn: document.getElementById("saveFormattedBtn"),
 
-2. 20フレームごと改行RAW5
-   - フレーム間は半角スペース区切り可
-   - 20フレームごとに改行
-   例:
-   1140A 0140A 0150A ...
-   （20個ごとに改行）
+      selfTestBtn: document.getElementById("selfTestBtn"),
+      testStatus: document.getElementById("testStatus")
+    };
 
-【描画データの意味】
+    let currentFrames = [];
+    let currentStrokes = [];
 
-ストロークは複数の点列からなる。
-各ストロークは次のルールでRAW5化すること:
+    function setStatus(el, msg, type = "") {
+      el.className = "status" + (type ? " " + type : "");
+      el.textContent = msg || "";
+    }
 
-- 各ストロークの先頭点は penUp フレームで開始位置へ移動する
-- その後、同じ先頭点を含めて各点を penDown フレームで並べる
+    function updateStats(frames, strokes) {
+      let penUp = 0;
+      let penDown = 0;
+      for (const f of frames) {
+        if (f[0] === "1") penUp++;
+        else penDown++;
+      }
+      els.frameCount.textContent = String(frames.length);
+      els.strokeCount.textContent = String(strokes.length);
+      els.penUpCount.textContent = String(penUp);
+      els.penDownCount.textContent = String(penDown);
+    }
 
-つまり、
-start = stroke[0]
-出力:
-1) penUp(start)
-2) penDown(start)
-3) penDown(2点目)
-4) penDown(3点目)
-...
+    function refreshOutputs() {
+      try {
+        els.outputJoined.value = framesToRAW5(currentFrames, false, 0);
+        els.outputFormatted.value = framesToRAW5(currentFrames, true, 20);
+        setStatus(els.outputStatus, "書き出し更新完了", "ok");
+      } catch (err) {
+        setStatus(els.outputStatus, err.message, "err");
+      }
+    }
 
-【禁止事項】
+    function parseAndRender() {
+      try {
+        const text = els.inputRAW5.value;
+        const frames = parseRAW5(text);
+        const strokes = framesToStrokes(frames);
 
-- RAW5をCSV風 x,y,z で定義しないこと
-- RAW5をJSON配列にしないこと
-- ヘッダを付けないこと
-- 独自拡張を加えないこと
-- 座標順を XXYY に変更しないこと
-- 小文字16進を前提にしないこと（大文字で出力）
-- pen状態を true/false や U/D にしないこと
+        currentFrames = frames;
+        currentStrokes = strokes;
 
-【必要な関数仕様】
+        updateStats(frames, strokes);
+        refreshOutputs();
+        drawPreview();
+        setStatus(
+          els.inputStatus,
+          `読み込み成功: ${frames.length}フレーム / ${strokes.length}ストローク`,
+          "ok"
+        );
+      } catch (err) {
+        currentFrames = [];
+        currentStrokes = [];
+        updateStats([], []);
+        els.outputJoined.value = "";
+        els.outputFormatted.value = "";
+        drawPreview();
+        setStatus(els.inputStatus, err.message, "err");
+      }
+    }
 
-アプリ内では、少なくとも次の仕様に対応すること:
+    function drawPreview() {
+      const canvas = els.canvas;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
 
-- packFrame(penUp, x, y)
-  -> "PYYXX" 形式の5文字文字列を返す
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
 
-- unpackFrame(frame)
-  -> { penUp, x, y } を返す
+      const margin = 36;
+      const range = 180;
+      const scale = Math.min((w - margin * 2) / range, (h - margin * 2) / range);
 
-- parseRAW5(text)
-  -> 空白・改行を無視して5文字ごとの配列を返す
+      function tx(x) { return margin + x * scale; }
+      // ここを修正: y=0 を上側にする
+      function ty(y) { return margin + y * scale; }
 
-- framesToRAW5(frames, withSpaces=false, perLine=0)
-  -> 連結形式または整形形式で文字列化する
+      if (els.showGrid.checked) {
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#e5e7eb";
+        for (let g = 0; g <= 180; g += 10) {
+          ctx.beginPath();
+          ctx.moveTo(tx(g), ty(0));
+          ctx.lineTo(tx(g), ty(180));
+          ctx.stroke();
 
-【目的】
+          ctx.beginPath();
+          ctx.moveTo(tx(0), ty(g));
+          ctx.lineTo(tx(180), ty(g));
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 1.5;
+        // ここも修正: 枠の左上を (0,0) にする
+        ctx.strokeRect(tx(0), ty(0), 180 * scale, 180 * scale);
+        ctx.restore();
+      }
 
-このアプリで生成したRAW5は、
-microbitペンプロッタツールの draw.html / PlotMix.html / PlotDoubler.html / 比較ビューア などでそのまま読み込めること。
-互換性を最優先し、現行RAW5仕様を変更しないこと。
+      if (!currentFrames.length) return;
+
+      // penUp path
+      if (els.showMoves.checked) {
+        ctx.save();
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "#9ca3af";
+        let lastMove = null;
+        for (const f of currentFrames) {
+          const p = unpackFrame(f);
+          if (p.penUp) {
+            if (lastMove) {
+              ctx.beginPath();
+              ctx.moveTo(tx(lastMove.x), ty(lastMove.y));
+              ctx.lineTo(tx(p.x), ty(p.y));
+              ctx.stroke();
+            }
+            lastMove = { x: p.x, y: p.y };
+          }
+        }
+        ctx.restore();
+      }
+
+      // penDown strokes
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#111827";
+      for (const stroke of currentStrokes) {
+        if (!stroke.length) continue;
+        if (stroke.length === 1) {
+          ctx.beginPath();
+          ctx.arc(tx(stroke[0].x), ty(stroke[0].y), 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = "#111827";
+          ctx.fill();
+          continue;
+        }
+        ctx.beginPath();
+        ctx.moveTo(tx(stroke[0].x), ty(stroke[0].y));
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(tx(stroke[i].x), ty(stroke[i].y));
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // points
+      if (els.showPoints.checked) {
+        ctx.save();
+        ctx.fillStyle = "#2563eb";
+        for (const stroke of currentStrokes) {
+          for (const p of stroke) {
+            ctx.beginPath();
+            ctx.arc(tx(p.x), ty(p.y), 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
+      // axes labels
+      ctx.save();
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("(0,0)", tx(0) + 4, ty(0) + 14);
+      ctx.fillText("(180,180)", tx(180) - 70, ty(180) - 6);
+      ctx.restore();
+    }
+
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyText(text) {
+      await navigator.clipboard.writeText(text);
+    }
+
+    function makeSampleRAW5() {
+      const strokes = [
+        [
+          {x:20,y:20},{x:160,y:20},{x:160,y:160},{x:20,y:160},{x:20,y:20}
+        ],
+        [
+          {x:20,y:20},{x:160,y:160}
+        ],
+        [
+          {x:160,y:20},{x:20,y:160}
+        ]
+      ];
+      return framesToRAW5(strokesToFrames(strokes), true, 20);
+    }
+
+    function runSelfTest() {
+      const lines = [];
+      try {
+        const f1 = packFrame(false, 10, 20);
+        const f2 = packFrame(true, 10, 20);
+        if (f1 !== "0140A") throw new Error("packFrame(false,10,20) failed: " + f1);
+        if (f2 !== "1140A") throw new Error("packFrame(true,10,20) failed: " + f2);
+        lines.push("packFrame OK");
+
+        const u = unpackFrame("1140A");
+        if (!(u.penUp === true && u.x === 10 && u.y === 20)) {
+          throw new Error("unpackFrame failed");
+        }
+        lines.push("unpackFrame OK");
+
+        const parsed = parseRAW5("1140A 0140A\n0150A");
+        if (parsed.length !== 3 || parsed[0] !== "1140A" || parsed[2] !== "0150A") {
+          throw new Error("parseRAW5 failed");
+        }
+        lines.push("parseRAW5 OK");
+
+        const joined = framesToRAW5(parsed, false, 0);
+        const formatted = framesToRAW5(parsed, true, 2);
+        if (joined !== "1140A0140A0150A") throw new Error("framesToRAW5 joined failed");
+        if (formatted !== "1140A 0140A\n0150A") throw new Error("framesToRAW5 formatted failed");
+        lines.push("framesToRAW5 OK");
+
+        const strokes = [
+          [{x:10,y:20},{x:11,y:21},{x:12,y:22}],
+          [{x:30,y:40},{x:31,y:41}]
+        ];
+        const fr = strokesToFrames(strokes);
+        const out = framesToStrokes(fr);
+        if (out.length !== 2) throw new Error("stroke conversion failed");
+        lines.push("strokesToFrames / framesToStrokes OK");
+
+        setStatus(els.testStatus, "セルフテスト成功\n" + lines.join("\n"), "ok");
+      } catch (err) {
+        setStatus(els.testStatus, "セルフテスト失敗\n" + err.message, "err");
+      }
+    }
+
+    // =========================================================
+    // events
+    // =========================================================
+    els.parseBtn.addEventListener("click", parseAndRender);
+
+    els.sampleBtn.addEventListener("click", () => {
+      els.inputRAW5.value = makeSampleRAW5();
+      parseAndRender();
+    });
+
+    els.clearBtn.addEventListener("click", () => {
+      els.inputRAW5.value = "";
+      currentFrames = [];
+      currentStrokes = [];
+      updateStats([], []);
+      els.outputJoined.value = "";
+      els.outputFormatted.value = "";
+      drawPreview();
+      setStatus(els.inputStatus, "", "");
+      setStatus(els.outputStatus, "", "");
+    });
+
+    els.pasteBtn.addEventListener("click", async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        els.inputRAW5.value = text;
+        setStatus(els.inputStatus, "クリップボードから貼り付けました", "ok");
+      } catch (err) {
+        setStatus(els.inputStatus, "貼り付けに失敗しました: " + err.message, "err");
+      }
+    });
+
+    els.fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        els.inputRAW5.value = text;
+        setStatus(els.inputStatus, "ファイルを読み込みました: " + file.name, "ok");
+      } catch (err) {
+        setStatus(els.inputStatus, "ファイル読込失敗: " + err.message, "err");
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    els.showMoves.addEventListener("change", drawPreview);
+    els.showGrid.addEventListener("change", drawPreview);
+    els.showPoints.addEventListener("change", drawPreview);
+    els.fitBtn.addEventListener("click", drawPreview);
+
+    els.copyJoinedBtn.addEventListener("click", async () => {
+      try {
+        await copyText(els.outputJoined.value);
+        setStatus(els.outputStatus, "連結RAW5をコピーしました", "ok");
+      } catch (err) {
+        setStatus(els.outputStatus, "コピー失敗: " + err.message, "err");
+      }
+    });
+
+    els.copyFormattedBtn.addEventListener("click", async () => {
+      try {
+        await copyText(els.outputFormatted.value);
+        setStatus(els.outputStatus, "整形RAW5をコピーしました", "ok");
+      } catch (err) {
+        setStatus(els.outputStatus, "コピー失敗: " + err.message, "err");
+      }
+    });
+
+    els.saveJoinedBtn.addEventListener("click", () => {
+      downloadText("raw5_joined.txt", els.outputJoined.value || "");
+      setStatus(els.outputStatus, "連結RAW5を保存しました", "ok");
+    });
+
+    els.saveFormattedBtn.addEventListener("click", () => {
+      downloadText("raw5_20frames_per_line.txt", els.outputFormatted.value || "");
+      setStatus(els.outputStatus, "整形RAW5を保存しました", "ok");
+    });
+
+    els.selfTestBtn.addEventListener("click", runSelfTest);
+
+    // 初期描画
+    drawPreview();
+    runSelfTest();
+
+    // consoleに関数を出しておく
+    Object.assign(window, {
+      packFrame,
+      unpackFrame,
+      parseRAW5,
+      framesToRAW5,
+      strokesToFrames,
+      framesToStrokes
+    });
+  </script>
+</body>
+</html>
