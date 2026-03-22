@@ -12,6 +12,10 @@
 [RAW5 Viewer/Converter](https://katabomb.github.io/microbit-plotter-tools/preview.html)
 RAW5正式仕様（PYYXX / 1フレーム5文字）をそのまま扱う単一HTMLアプリです．空白・改行を無視して読み込み，連結RAW5 / 20フレームごと改行RAW5 を書き出せます．
 
+[RAW5 Viewer/Converter](https://katabomb.github.io/microbit-plotter-tools/raw5_transformer.html)
+RAW5正式仕様 PYYXX をそのまま読み込み，90度回転・上下反転・左右反転したRAW5を生成する単一HTMLアプリです．
+
+
 ## フォトギャラリー
 ### ペンプロッター本体
 ![penpotter](photos/plotter.jpg)
