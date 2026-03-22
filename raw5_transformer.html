@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAW5 Rotate / Flip Generator</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --panel:#ffffff;
+      --line:#d7dce5;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --accent:#2563eb;
+      --accent2:#0ea5e9;
+      --ok:#059669;
+      --danger:#dc2626;
+      --shadow:0 8px 24px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+    .wrap{max-width:1480px;margin:0 auto;padding:16px;}
+    h1{margin:0 0 8px;font-size:24px}
+    .sub{color:var(--muted);line-height:1.6;margin-bottom:16px}
+    .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px}
+    .panel h2,.panel h3{margin:0 0 12px}
+    textarea{width:100%;min-height:230px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:12px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#111827;background:#fff}
+    textarea.output{min-height:170px}
+    .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+    button,.btn,select{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:var(--text);font-size:14px}
+    button,.btn{cursor:pointer}
+    .primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .secondary{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+    .danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+    .ghost{background:#fff}
+    .status{margin-top:10px;font-size:14px;white-space:pre-wrap;color:var(--muted)}
+    .ok{color:var(--ok)}
+    .err{color:var(--danger)}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .canvasWrap{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
+    canvas{display:block;width:100%;height:auto;background:#fff}
+    .label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+    .stat{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fafbfd}
+    .k{font-size:12px;color:var(--muted);margin-bottom:4px}
+    .v{font-size:18px;font-weight:700}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;margin-left:6px}
+    .help{font-size:13px;color:var(--muted);line-height:1.6;margin-top:8px}
+    .mini{font-size:12px;color:var(--muted)}
+    .sectionTop{margin-top:14px;padding-top:14px;border-top:1px solid #e8ecf3}
+    @media (max-width: 980px){
+      .grid,.two{grid-template-columns:1fr}
+      .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>RAW5 Rotate / Flip Generator <span class="badge">microbitペンプロッタ互換</span></h1>
+    <div class="sub">
+      RAW5正式仕様 <code>PYYXX</code> をそのまま読み込み、90度回転・上下反転・左右反転したRAW5を生成する単一HTMLアプリです。<br>
+      座標系は RAW5 の定義どおり <b>左上原点・xは右向き増加・yは下向き増加</b> のまま扱います。
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>入力RAW5</h2>
+        <textarea id="inputRAW5" spellcheck="false" placeholder="RAW5を貼り付けてください。&#10;例: 10000100000050500A0A...\n空白・改行は無視します。"></textarea>
+        <div class="row">
+          <button id="loadBtn" class="primary">読み込み</button>
+          <button id="sampleBtn" class="ghost">サンプル</button>
+          <button id="clearBtn" class="danger">クリア</button>
+          <button id="pasteBtn" class="ghost">貼り付け</button>
+          <label class="btn">ファイル読込<input id="fileInput" type="file" accept=".txt,.raw5,text/plain" style="display:none"></label>
+        </div>
+        <div id="inputStatus" class="status"></div>
+
+        <div class="stats">
+          <div class="stat"><div class="k">フレーム数</div><div class="v" id="frameCount">0</div></div>
+          <div class="stat"><div class="k">ストローク数</div><div class="v" id="strokeCount">0</div></div>
+          <div class="stat"><div class="k">penUp数</div><div class="v" id="penUpCount">0</div></div>
+          <div class="stat"><div class="k">penDown数</div><div class="v" id="penDownCount">0</div></div>
+        </div>
+
+        <div class="sectionTop">
+          <div class="row">
+            <label for="transformSelect">変換:</label>
+            <select id="transformSelect">
+              <option value="rotCW">90度回転（時計回り）</option>
+              <option value="rotCCW">90度回転（反時計回り）</option>
+              <option value="flipV">上下反転</option>
+              <option value="flipH">左右反転</option>
+            </select>
+            <button id="transformBtn" class="secondary">変換して出力</button>
+          </div>
+          <div class="help">
+            変換式は RAW5 の 0〜180 座標範囲に対して行います。<br>
+            90度回転（時計回り）: <code>x' = 180 - y, y' = x</code><br>
+            90度回転（反時計回り）: <code>x' = y, y' = 180 - x</code><br>
+            上下反転: <code>x' = x, y' = 180 - y</code> ／ 左右反転: <code>x' = 180 - x, y' = y</code>
+          </div>
+        </div>
+
+        <div class="sectionTop">
+          <div class="label">入力プレビュー</div>
+          <div class="canvasWrap"><canvas id="inputCanvas" width="420" height="420"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>変換結果</h2>
+        <div class="two">
+          <div>
+            <div class="label">連結RAW5</div>
+            <textarea id="outputCompact" class="output" spellcheck="false" readonly></textarea>
+            <div class="row">
+              <button id="copyCompactBtn" class="ghost">コピー</button>
+              <button id="saveCompactBtn" class="ghost">保存</button>
+            </div>
+          </div>
+          <div>
+            <div class="label">20フレームごと改行RAW5</div>
+            <textarea id="outputPretty" class="output" spellcheck="false" readonly></textarea>
+            <div class="row">
+              <button id="copyPrettyBtn" class="ghost">コピー</button>
+              <button id="savePrettyBtn" class="ghost">保存</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="outputStatus" class="status"></div>
+
+        <div class="sectionTop">
+          <div class="label">変換後プレビュー</div>
+          <div class="canvasWrap"><canvas id="outputCanvas" width="420" height="420"></canvas></div>
+          <div class="help">
+            プレビューも RAW5 と同じ向きです。<b>y軸反転はしていません。</b><br>
+            左上が (0,0)、右下が (180,180) です。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  const MAX = 180;
+  let sourceFrames = [];
+  let transformedFrames = [];
+
+  const $ = (id) => document.getElementById(id);
+  const inputRAW5 = $('inputRAW5');
+  const inputStatus = $('inputStatus');
+  const outputStatus = $('outputStatus');
+  const outputCompact = $('outputCompact');
+  const outputPretty = $('outputPretty');
+  const transformSelect = $('transformSelect');
+
+  function clampInt(v, min, max){
+    v = Number(v);
+    if (!Number.isFinite(v)) v = 0;
+    v = Math.round(v);
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function packFrame(penUp, x, y){
+    x = clampInt(x, 0, MAX);
+    y = clampInt(y, 0, MAX);
+    const p = penUp ? '1' : '0';
+    const value = ((y & 0xff) << 8) | (x & 0xff);
+    const hex = value.toString(16).toUpperCase().padStart(4, '0');
+    return p + hex;
+  }
+
+  function unpackFrame(frame){
+    if (typeof frame !== 'string' || frame.length !== 5) {
+      throw new Error('フレーム長が5文字ではありません: ' + String(frame));
+    }
+    const p = frame[0];
+    if (p !== '0' && p !== '1') {
+      throw new Error('先頭文字Pは 0 または 1 である必要があります: ' + frame);
+    }
+    const hex = frame.slice(1).toUpperCase();
+    if (!/^[0-9A-F]{4}$/.test(hex)) {
+      throw new Error('YYXX 部分は4桁の16進文字である必要があります: ' + frame);
+    }
+    const value = parseInt(hex, 16);
+    const y = (value >> 8) & 0xff;
+    const x = value & 0xff;
+    if (x < 0 || x > MAX || y < 0 || y > MAX) {
+      throw new Error(`座標が範囲外です (${x}, ${y}) : ${frame}`);
+    }
+    return { penUp: p === '1', x, y };
+  }
+
+  function parseRAW5(text){
+    const cleaned = String(text || '').replace(/\s+/g, '').toUpperCase();
+    if (!cleaned) return [];
+    if (cleaned.length % 5 !== 0) {
+      throw new Error(`RAW5全体の文字数が5の倍数ではありません（空白・改行除去後 ${cleaned.length} 文字）`);
+    }
+    if (!/^[01A-F0-9]+$/.test(cleaned)) {
+      throw new Error('RAW5に使用できない文字が含まれています。');
+    }
+    const frames = [];
+    for (let i = 0; i < cleaned.length; i += 5) {
+      const frame = cleaned.slice(i, i + 5);
+      unpackFrame(frame);
+      frames.push(frame);
+    }
+    return frames;
+  }
+
+  function framesToRAW5(frames, withSpaces = false, perLine = 0){
+    const list = Array.isArray(frames) ? frames : [];
+    if (perLine > 0) {
+      const lines = [];
+      for (let i = 0; i < list.length; i += perLine) {
+        const chunk = list.slice(i, i + perLine);
+        lines.push(withSpaces ? chunk.join(' ') : chunk.join(''));
+      }
+      return lines.join('\n');
+    }
+    return withSpaces ? list.join(' ') : list.join('');
+  }
+
+  function transformPoint(x, y, mode){
+    switch (mode) {
+      case 'rotCW':
+        return { x: MAX - y, y: x };
+      case 'rotCCW':
+        return { x: y, y: MAX - x };
+      case 'flipV':
+        return { x, y: MAX - y };
+      case 'flipH':
+        return { x: MAX - x, y };
+      default:
+        return { x, y };
+    }
+  }
+
+  function transformFrames(frames, mode){
+    return frames.map((frame) => {
+      const { penUp, x, y } = unpackFrame(frame);
+      const p = transformPoint(x, y, mode);
+      return packFrame(penUp, p.x, p.y);
+    });
+  }
+
+  function countStats(frames){
+    let penUpCount = 0;
+    let penDownCount = 0;
+    let strokeCount = 0;
+    frames.forEach((frame) => {
+      const { penUp } = unpackFrame(frame);
+      if (penUp) {
+        penUpCount += 1;
+        strokeCount += 1;
+      } else {
+        penDownCount += 1;
+      }
+    });
+    return { frameCount: frames.length, strokeCount, penUpCount, penDownCount };
+  }
+
+  function setStats(frames){
+    const s = countStats(frames);
+    $('frameCount').textContent = String(s.frameCount);
+    $('strokeCount').textContent = String(s.strokeCount);
+    $('penUpCount').textContent = String(s.penUpCount);
+    $('penDownCount').textContent = String(s.penDownCount);
+  }
+
+  function tx(x, pad, size){
+    return pad + (x / MAX) * size;
+  }
+
+  function ty(y, pad, size){
+    return pad + (y / MAX) * size;
+  }
+
+  function drawRAW5(canvas, frames){
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+
+    const pad = 28;
+    const size = Math.min(w, h) - pad * 2;
+
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 6; i++) {
+      const v = pad + size * i / 6;
+      ctx.beginPath(); ctx.moveTo(v, pad); ctx.lineTo(v, pad + size); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pad, v); ctx.lineTo(pad + size, v); ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#9ca3af';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(pad, pad, size, size);
+
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('(0,0)', pad - 4, pad - 8);
+    ctx.fillText('(180,0)', pad + size - 50, pad - 8);
+    ctx.fillText('(0,180)', pad - 4, pad + size + 16);
+    ctx.fillText('(180,180)', pad + size - 62, pad + size + 16);
+
+    if (!frames || frames.length === 0) {
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('RAW5を読み込むとここに表示します', pad + 24, h / 2);
+      return;
+    }
+
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    let lastPoint = null;
+    for (const frame of frames) {
+      const { penUp, x, y } = unpackFrame(frame);
+      const px = tx(x, pad, size);
+      const py = ty(y, pad, size);
+      if (penUp) {
+        lastPoint = { x: px, y: py };
+      } else {
+        if (!lastPoint) {
+          lastPoint = { x: px, y: py };
+        }
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+        lastPoint = { x: px, y: py };
+      }
+    }
+
+    const first = unpackFrame(frames[0]);
+    const last = unpackFrame(frames[frames.length - 1]);
+    for (const p of [first, last]) {
+      const px = tx(p.x, pad, size);
+      const py = ty(p.y, pad, size);
+      ctx.beginPath();
+      ctx.fillStyle = p === first ? '#2563eb' : '#dc2626';
+      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function setStatus(el, message, type = ''){
+    el.className = 'status' + (type ? ' ' + type : '');
+    el.textContent = message;
+  }
+
+  function saveTextFile(filename, text){
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
+
+  async function copyText(text){
+    await navigator.clipboard.writeText(text);
+  }
+
+  function applyTransform(){
+    try {
+      if (!sourceFrames.length) {
+        throw new Error('先にRAW5を読み込んでください。');
+      }
+      transformedFrames = transformFrames(sourceFrames, transformSelect.value);
+      outputCompact.value = framesToRAW5(transformedFrames, false, 0);
+      outputPretty.value = framesToRAW5(transformedFrames, true, 20);
+      drawRAW5($('outputCanvas'), transformedFrames);
+      const nameMap = {
+        rotCW: '90度回転（時計回り）',
+        rotCCW: '90度回転（反時計回り）',
+        flipV: '上下反転',
+        flipH: '左右反転'
+      };
+      setStatus(outputStatus, `変換完了: ${nameMap[transformSelect.value]}\n出力フレーム数: ${transformedFrames.length}`, 'ok');
+    } catch (err) {
+      transformedFrames = [];
+      outputCompact.value = '';
+      outputPretty.value = '';
+      drawRAW5($('outputCanvas'), []);
+      setStatus(outputStatus, err.message || String(err), 'err');
+    }
+  }
+
+  function loadInput(){
+    try {
+      sourceFrames = parseRAW5(inputRAW5.value);
+      setStats(sourceFrames);
+      drawRAW5($('inputCanvas'), sourceFrames);
+      setStatus(inputStatus, `読み込み完了: ${sourceFrames.length} フレーム`, 'ok');
+      applyTransform();
+    } catch (err) {
+      sourceFrames = [];
+      transformedFrames = [];
+      setStats([]);
+      outputCompact.value = '';
+      outputPretty.value = '';
+      drawRAW5($('inputCanvas'), []);
+      drawRAW5($('outputCanvas'), []);
+      setStatus(inputStatus, err.message || String(err), 'err');
+      setStatus(outputStatus, '変換結果はありません。', '');
+    }
+  }
+
+  function setSample(){
+    const frames = [
+      packFrame(true, 20, 20),
+      packFrame(false, 20, 20),
+      packFrame(false, 160, 20),
+      packFrame(false, 160, 160),
+      packFrame(false, 20, 160),
+      packFrame(false, 20, 20),
+      packFrame(true, 40, 40),
+      packFrame(false, 40, 40),
+      packFrame(false, 140, 140),
+      packFrame(true, 140, 40),
+      packFrame(false, 140, 40),
+      packFrame(false, 40, 140)
+    ];
+    inputRAW5.value = framesToRAW5(frames, true, 6);
+    loadInput();
+  }
+
+  $('loadBtn').addEventListener('click', loadInput);
+  $('transformBtn').addEventListener('click', applyTransform);
+  transformSelect.addEventListener('change', () => { if (sourceFrames.length) applyTransform(); });
+  $('sampleBtn').addEventListener('click', setSample);
+  $('clearBtn').addEventListener('click', () => {
+    inputRAW5.value = '';
+    outputCompact.value = '';
+    outputPretty.value = '';
+    sourceFrames = [];
+    transformedFrames = [];
+    setStats([]);
+    drawRAW5($('inputCanvas'), []);
+    drawRAW5($('outputCanvas'), []);
+    setStatus(inputStatus, '', '');
+    setStatus(outputStatus, '', '');
+  });
+
+  $('pasteBtn').addEventListener('click', async () => {
+    try {
+      inputRAW5.value = await navigator.clipboard.readText();
+      loadInput();
+    } catch {
+      setStatus(inputStatus, '貼り付けに失敗しました。ブラウザの権限設定をご確認ください。', 'err');
+    }
+  });
+
+  $('fileInput').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      inputRAW5.value = await file.text();
+      loadInput();
+    } catch {
+      setStatus(inputStatus, 'ファイル読み込みに失敗しました。', 'err');
+    } finally {
+      e.target.value = '';
+    }
+  });
+
+  $('copyCompactBtn').addEventListener('click', async () => {
+    try {
+      if (!outputCompact.value) throw new Error('コピーするデータがありません。');
+      await copyText(outputCompact.value);
+      setStatus(outputStatus, '連結RAW5をコピーしました。', 'ok');
+    } catch (err) {
+      setStatus(outputStatus, err.message || String(err), 'err');
+    }
+  });
+
+  $('copyPrettyBtn').addEventListener('click', async () => {
+    try {
+      if (!outputPretty.value) throw new Error('コピーするデータがありません。');
+      await copyText(outputPretty.value);
+      setStatus(outputStatus, '20フレームごと改行RAW5をコピーしました。', 'ok');
+    } catch (err) {
+      setStatus(outputStatus, err.message || String(err), 'err');
+    }
+  });
+
+  $('saveCompactBtn').addEventListener('click', () => {
+    if (!outputCompact.value) {
+      setStatus(outputStatus, '保存するデータがありません。', 'err');
+      return;
+    }
+    saveTextFile('raw5_transformed_compact.raw5', outputCompact.value);
+    setStatus(outputStatus, '連結RAW5を保存しました。', 'ok');
+  });
+
+  $('savePrettyBtn').addEventListener('click', () => {
+    if (!outputPretty.value) {
+      setStatus(outputStatus, '保存するデータがありません。', 'err');
+      return;
+    }
+    saveTextFile('raw5_transformed_pretty.raw5', outputPretty.value);
+    setStatus(outputStatus, '20フレームごと改行RAW5を保存しました。', 'ok');
+  });
+
+  function selfTest(){
+    const cases = [
+      { penUp: false, x: 10, y: 20, frame: '0140A' },
+      { penUp: true, x: 10, y: 20, frame: '1140A' },
+      { penUp: true, x: 180, y: 180, frame: '1B4B4' },
+      { penUp: false, x: 0, y: 0, frame: '00000' }
+    ];
+    for (const c of cases) {
+      const f = packFrame(c.penUp, c.x, c.y);
+      if (f !== c.frame) throw new Error('packFrame self test failed: ' + f + ' != ' + c.frame);
+      const u = unpackFrame(f);
+      if (u.penUp !== c.penUp || u.x !== c.x || u.y !== c.y) {
+        throw new Error('unpackFrame self test failed');
+      }
+    }
+    const parsed = parseRAW5('1140A 0140A\n0150A');
+    if (parsed.length !== 3) throw new Error('parseRAW5 self test failed');
+    const cw = transformFrames(['10000'], 'rotCW')[0];
+    if (cw !== '100B4') throw new Error('rotCW self test failed: ' + cw);
+    const fh = transformFrames(['10B4B4'], 'flipH')[0];
+    if (fh !== '10B400') throw new Error('flipH self test failed: ' + fh);
+  }
+
+  drawRAW5($('inputCanvas'), []);
+  drawRAW5($('outputCanvas'), []);
+  setStatus(outputStatus, '変換結果はまだありません。');
+  try {
+    selfTest();
+    setStatus(inputStatus, '準備完了。RAW5を貼り付けて「読み込み」を押してください。', 'ok');
+  } catch (err) {
+    setStatus(inputStatus, '初期セルフテスト失敗: ' + (err.message || String(err)), 'err');
+  }
+})();
+</script>
+</body>
+</html>
