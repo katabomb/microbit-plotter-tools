@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RAW5 キャプスタン → ひし形リンク変換</title>
+<style>
+  :root{--bg:#f6f7fb;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#d1d5db;--bad:#dc2626;--warn:#f59e0b;--ok:#2563eb;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.45}
+  header{padding:14px 16px;background:#111827;color:white}
+  header h1{font-size:18px;margin:0 0 4px} header p{font-size:12px;margin:0;color:#d1d5db}
+  main{padding:12px;display:grid;gap:12px;grid-template-columns:1fr}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .grid{display:grid;gap:12px}.cols{grid-template-columns:1fr 1fr}.three{grid-template-columns:1fr 1fr 1fr}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+  input,textarea,select,button{font:inherit;border:1px solid var(--line);border-radius:10px;padding:9px;background:white;color:var(--ink)}
+  textarea{width:100%;min-height:180px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;resize:vertical}
+  input[type="number"]{width:100%} input[type="range"]{width:100%;padding:0}
+  button{background:#111827;color:white;border:none;font-weight:700;cursor:pointer;min-height:42px} button.secondary{background:#e5e7eb;color:#111827}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  canvas{width:100%;height:auto;background:white;border:1px solid var(--line);border-radius:12px;touch-action:none;display:block}
+  .stat{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;background:#f3f4f6;border-radius:10px;padding:8px;white-space:pre-wrap}
+  .small{font-size:12px;color:var(--muted)}
+  .bad{color:var(--bad)}.warn{color:var(--warn)}.ok{color:var(--ok)}
+  @media(min-width:900px){main{grid-template-columns:360px 1fr}.wide{grid-column:1/-1}.cols{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>RAW5 キャプスタンドライブ → ひし形リンク式アーム変換</h1>
+  <p>入力RAW5: PYYXX / 出力RAW5: Pββαα（YY=β, XX=α）</p>
+</header>
+<main>
+  <section class="card">
+    <h2 style="font-size:16px;margin:0 0 8px">1. 元RAW5</h2>
+    <textarea id="input" spellcheck="false" placeholder="例: 15A5A\n05A5A\n..."></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="convertBtn">変換</button>
+      <button class="secondary" id="sampleBtn">サンプル</button>
+      <button class="secondary" id="clearBtn">消去</button>
+    </div>
+    <p class="small">5桁ごとに読み取ります．空白・改行は混在可．Pは0/1，YY/XXは00〜B4想定です．</p>
+  </section>
+
+  <section class="card">
+    <h2 style="font-size:16px;margin:0 0 8px">2. 設定</h2>
+    <div class="grid three">
+      <div><label>元描画幅 mm</label><input id="srcW" type="number" value="75" step="0.1"></div>
+      <div><label>元描画高 mm</label><input id="srcH" type="number" value="75" step="0.1"></div>
+      <div><label>リンク長 L mm</label><input id="L" type="number" value="90" step="0.1"></div>
+      <div><label>アーム描画中心 X mm</label><input id="offX" type="number" value="0" step="0.1"></div>
+      <div><label>アーム描画中心 Y mm</label><input id="offY" type="number" value="127.28" step="0.1"></div>
+      <div><label>拡大率</label><input id="scale" type="number" value="1" step="0.01"></div>
+      <div><label>α最小</label><input id="aMin" type="number" value="0" step="1"></div>
+      <div><label>α最大</label><input id="aMax" type="number" value="180" step="1"></div>
+      <div><label>β最小</label><input id="bMin" type="number" value="0" step="1"></div>
+      <div><label>β最大</label><input id="bMax" type="number" value="180" step="1"></div>
+      <div><label>左右反転</label><select id="flipX"><option value="0">しない</option><option value="1">する</option></select></div>
+      <div><label>上下反転</label><select id="flipY"><option value="0">しない</option><option value="1">する</option></select></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="secondary" id="centerBtn">初期中心に戻す</button>
+      <button class="secondary" id="downloadBtn">出力RAW5保存</button>
+    </div>
+    <p class="small">初期中心Yは √2L です．キャプスタンの中央90,90がアーム初期姿勢 P=(0,√2L) に来ます．</p>
+  </section>
+
+  <section class="card wide">
+    <h2 style="font-size:16px;margin:0 0 8px">3. プレビュー</h2>
+    <div class="grid cols">
+      <div><label>元RAW5プレビュー</label><canvas id="srcCanvas" width="600" height="600"></canvas></div>
+      <div><label>アーム式プレビュー</label><canvas id="armCanvas" width="600" height="600"></canvas></div>
+    </div>
+    <div id="stats" class="stat" style="margin-top:10px">未変換</div>
+  </section>
+
+  <section class="card wide">
+    <h2 style="font-size:16px;margin:0 0 8px">4. 変換後RAW5</h2>
+    <textarea id="output" spellcheck="false" readonly></textarea>
+  </section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let converted=[];
+
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+function hex2(n){return clamp(Math.round(n),0,180).toString(16).toUpperCase().padStart(2,'0');}
+function deg(rad){return rad*180/Math.PI;}
+function parseRAW5(text){
+  const s=(text||'').toUpperCase().replace(/[^0-9A-F]/g,'');
+  const out=[];
+  for(let i=0;i+4<s.length;i+=5){
+    const p=parseInt(s[i],16), yy=parseInt(s.slice(i+1,i+3),16), xx=parseInt(s.slice(i+3,i+5),16);
+    if((p===0||p===1)&&yy>=0&&yy<=180&&xx>=0&&xx<=180) out.push({p,yy,xx,raw:s.slice(i,i+5)});
+  }
+  return out;
+}
+function settings(){
+  const L=Number($('L').value)||90;
+  return {
+    srcW:Number($('srcW').value)||75, srcH:Number($('srcH').value)||75, L,
+    offX:Number($('offX').value)||0, offY:Number($('offY').value)||Math.SQRT2*L,
+    scale:Number($('scale').value)||1,
+    aMin:Number($('aMin').value)||0, aMax:Number($('aMax').value)||180,
+    bMin:Number($('bMin').value)||0, bMax:Number($('bMax').value)||180,
+    flipX:$('flipX').value==='1', flipY:$('flipY').value==='1'
+  };
+}
+function srcToXY(r,st){
+  // RAW5 XX/YY: 0..180 servo angle, 90=center. Canvas-like Y is inverted to math Y by default.
+  let x=(r.xx-90)/180*st.srcW;
+  let y=(90-r.yy)/180*st.srcH;
+  if(st.flipX) x=-x;
+  if(st.flipY) y=-y;
+  return {x:x*st.scale+st.offX, y:y*st.scale+st.offY, srcX:x, srcY:y};
+}
+function ik(x,y,L){
+  let d=Math.hypot(x,y);
+  let reachable=true, limited=false;
+  if(d<=1e-9){ y=1e-6; d=Math.hypot(x,y); reachable=false; limited=true; }
+  const maxD=2*L;
+  if(d>maxD){ const k=maxD/d; x*=k; y*=k; d=maxD; reachable=false; limited=true; }
+  const h2=L*L-(d/2)*(d/2);
+  const h=Math.sqrt(Math.max(0,h2));
+  const mx=x/2, my=y/2;
+  const nx=-y/d, ny=x/d;
+  const A={x:mx+h*nx,y:my+h*ny};
+  const B={x:mx-h*nx,y:my-h*ny};
+  let a=deg(Math.atan2(A.y,A.x));
+  let b=deg(Math.atan2(B.y,B.x));
+  if(a<0)a+=360; if(b<0)b+=360;
+  return {x,y,A,B,a,b,reachable,limited};
+}
+function convert(){
+  const st=settings();
+  const rows=parseRAW5($('input').value);
+  const out=[]; converted=[];
+  let unreachable=0, servoWarn=0;
+  for(const r of rows){
+    const pos=srcToXY(r,st);
+    const k=ik(pos.x,pos.y,st.L);
+    const servoOK=k.a>=st.aMin&&k.a<=st.aMax&&k.b>=st.bMin&&k.b<=st.bMax;
+    if(!k.reachable) unreachable++;
+    if(!servoOK) servoWarn++;
+    const aa=clamp(k.a,st.aMin,st.aMax);
+    const bb=clamp(k.b,st.bMin,st.bMax);
+    const raw=`${r.p}${hex2(bb)}${hex2(aa)}`;
+    out.push(raw);
+    converted.push({...r,...pos,...k,aa,bb,servoOK,out:raw});
+  }
+  $('output').value=out.join('').match(/.{1,100}/g)?.join('\n')||'';
+  drawSrc(rows,st); drawArm(converted,st);
+  $('stats').innerHTML=`入力点数: ${rows.length}\n出力点数: ${out.length}\n到達範囲外で丸めた点: ${unreachable}\nサーボ範囲外で丸めた点: ${servoWarn}\n出力形式: PYYXX = P β α`;
+}
+function drawPath(ctx, pts, map, colorDown='#111827', colorUp='#9ca3af'){
+  let last=null;
+  for(const p of pts){
+    const q=map(p);
+    if(last && p.p===0){ ctx.strokeStyle=colorDown; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(q.x,q.y); ctx.stroke(); }
+    else if(last){ ctx.strokeStyle=colorUp; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(q.x,q.y); ctx.stroke(); }
+    last=q;
+  }
+}
+function clearCanvas(c){const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);return ctx;}
+function drawSrc(rows,st){
+  const c=$('srcCanvas'), ctx=clearCanvas(c), pad=45, w=c.width, h=c.height;
+  const sx=(w-2*pad)/st.srcW, sy=(h-2*pad)/st.srcH, s=Math.min(sx,sy);
+  const map=p=>({x:w/2 + (p.xx-90)/180*st.srcW*s, y:h/2 + (p.yy-90)/180*st.srcH*s});
+  ctx.strokeStyle='#e5e7eb';ctx.lineWidth=1;ctx.strokeRect(w/2-st.srcW*s/2,h/2-st.srcH*s/2,st.srcW*s,st.srcH*s);
+  drawPath(ctx,rows,map);
+}
+function drawArm(pts,st){
+  const c=$('armCanvas'), ctx=clearCanvas(c), w=c.width,h=c.height;
+  const extent=Math.max(2*st.L, Math.abs(st.offY)+st.srcH*st.scale, st.srcW*st.scale)*1.15;
+  const s=(Math.min(w,h)*0.46)/extent;
+  const map=(x,y)=>({x:w/2+x*s,y:h*0.82-y*s});
+  const O=map(0,0);
+  ctx.strokeStyle='#dbeafe';ctx.lineWidth=2;ctx.beginPath();ctx.arc(O.x,O.y,2*st.L*s,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#e5e7eb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,O.y);ctx.lineTo(w,O.y);ctx.moveTo(O.x,0);ctx.lineTo(O.x,h);ctx.stroke();
+  drawPath(ctx,pts,p=>map(p.x,p.y));
+  if(pts.length){
+    const p=pts[pts.length-1], P=map(p.x,p.y), A=map(p.A.x,p.A.y), B=map(p.B.x,p.B.y);
+    ctx.strokeStyle=p.servoOK?'#2563eb':'#f59e0b';ctx.lineWidth=7;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(O.x,O.y);ctx.lineTo(A.x,A.y);ctx.lineTo(P.x,P.y);ctx.lineTo(B.x,B.y);ctx.lineTo(O.x,O.y);ctx.stroke();
+    for(const q of [O,A,B,P]){ctx.fillStyle='#111827';ctx.beginPath();ctx.arc(q.x,q.y,6,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#111827';ctx.font='14px sans-serif';ctx.fillText(`α=${p.a.toFixed(1)}° β=${p.b.toFixed(1)}°`,12,22);
+  }
+}
+function sample(){
+  const pts=[];
+  const cx=90,cy=90,r=45;
+  for(let i=0;i<=72;i++){ const t=i/72*Math.PI*2; const x=Math.round(cx+r*Math.cos(t)); const y=Math.round(cy+r*Math.sin(t)); pts.push(`${i===0?1:0}${hex2(y)}${hex2(x)}`); }
+  $('input').value=pts.join(''); convert();
+}
+$('convertBtn').onclick=convert;
+$('sampleBtn').onclick=sample;
+$('clearBtn').onclick=()=>{$('input').value='';$('output').value='';converted=[];drawSrc([],settings());drawArm([],settings());$('stats').textContent='未変換';};
+$('centerBtn').onclick=()=>{const L=Number($('L').value)||90;$('offX').value=0;$('offY').value=(Math.SQRT2*L).toFixed(2);convert();};
+$('downloadBtn').onclick=()=>{const blob=new Blob([$('output').value],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='arm_raw5.txt';a.click();URL.revokeObjectURL(a.href);};
+for(const id of ['srcW','srcH','L','offX','offY','scale','aMin','aMax','bMin','bMax','flipX','flipY']) $(id).addEventListener('change',convert);
+window.addEventListener('load',()=>{drawSrc([],settings());drawArm([],settings());});
+</script>
+</body>
+</html>
