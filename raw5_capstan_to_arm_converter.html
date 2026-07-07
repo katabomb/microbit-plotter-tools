@@ -148,7 +148,7 @@ function convert(){
     out.push(raw);
     converted.push({...r,...pos,...k,aa,bb,servoOK,out:raw});
   }
-  $('output').value=out.join('').match(/.{1,100}/g)?.join('\n')||'';
+  $('output').value=out.join('').match(/.{1,100}/g)?.join('')||'';
   drawSrc(rows,st); drawArm(converted,st);
   $('stats').innerHTML=`入力点数: ${rows.length}\n出力点数: ${out.length}\n到達範囲外で丸めた点: ${unreachable}\nサーボ範囲外で丸めた点: ${servoWarn}\n出力形式: PYYXX = P β α`;
 }
